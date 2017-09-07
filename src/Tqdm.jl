@@ -85,7 +85,7 @@ function display_progress(t::tqdm)
 
     width = t.width - length(status_string) - 2
     print(status_string)
-    print("[")
+    print("▌")
 
     if (t.total <= 0)
         offset = t.current % 10
@@ -94,17 +94,17 @@ function display_progress(t::tqdm)
         print(repeat("/         ", Int(segments)))
         print(repeat(" ", Int(remain)))
     else
-        cellvalue  = t.total / width
+        cellvalue = t.total / width
         full_cells, remain = divrem(t.current, cellvalue)
         print(repeat("█", Int(full_cells)))
 
-		part = Int(floor(8 * remain / cellvalue))
-		print(EIGHTS[part])
         if (full_cells < width)
+			part = Int(floor(8 * remain / cellvalue))
+			print(EIGHTS[part])
             print(repeat(" ", Int(width - full_cells - 1)))
         end
     end
-    print("]")
+    print("▐")
 end
 
 function Base.start(t::tqdm)
