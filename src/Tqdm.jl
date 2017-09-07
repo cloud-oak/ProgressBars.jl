@@ -9,6 +9,16 @@ Usage:
 """
 module Tqdm
 
+EIGHTS = Dict(0 => ' ',
+			  1 => '▏',
+			  2 => '▎',
+			  3 => '▍',
+			  4 => '▌',
+			  5 => '▋',
+			  6 => '▊',
+			  7 => '▉',
+			  8 => '█')
+
 export tqdm
 """
 Decorate an iterable object, returning an iterator which acts exactly
@@ -88,16 +98,8 @@ function display_progress(t::tqdm)
         full_cells, remain = divrem(t.current, cellvalue)
         print(repeat("█", Int(full_cells)))
 
-        part = remain / cellvalue
-        if (part >= .75)
-            print("▓")
-        elseif (part >= .5)
-            print("▒")
-        elseif (part >= .25)
-            print("░")
-        else
-            print(" ")
-        end
+		part = Int(floor(8 * remain / cellvalue))
+		print(EIGHTS[part])
         if (full_cells < width)
             print(repeat(" ", Int(width - full_cells - 1)))
         end
@@ -118,7 +120,12 @@ function Base.next(t::tqdm, state)
 end
 
 function Base.done(t::tqdm, state)
-    return Base.done(t.wrapped, state)
+	isDone = Base.done(t.wrapped, state)
+	if isDone
+		t.current = t.total
+		display_progress(t)
+	end
+    return isDone
 end
 
 end # module
