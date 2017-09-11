@@ -85,7 +85,7 @@ function display_progress(t::tqdm)
 
     width = t.width - length(status_string) - 2
     print(status_string)
-    print("▌")
+    print("┣")
 
     if (t.total <= 0)
         offset = t.current % 10
@@ -104,7 +104,7 @@ function display_progress(t::tqdm)
             print(repeat(" ", Int(width - full_cells - 1)))
         end
     end
-    print("▐")
+    print("┫")
 end
 
 function Base.start(t::tqdm)
