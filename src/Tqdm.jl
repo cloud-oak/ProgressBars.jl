@@ -1,4 +1,3 @@
-__precompile__()
 """
 Customisable progressbar decorator for iterators.
 Usage:
@@ -38,7 +37,14 @@ mutable struct tqdm
         this.wrapped = wrapped
         this.width = width
         this.start_time = now()
-        this.total = length(wrapped)
+        iteratorSize = Base.IteratorSize(wrapped)
+        if (typeof(iteratorSize) <: Base.HasShape) || (typeof(iteratorSize) <: Base.HasLength)
+             this.total = length(wrapped)
+         elseif (typeof(iteratorSize) <: Base.IsInfinite)
+             this.total = -1
+         else
+             this.total = total
+         end
         return this
     end
 end
