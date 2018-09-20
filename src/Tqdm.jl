@@ -9,6 +9,7 @@ Usage:
 """
 module Tqdm
 
+using Dates
 EIGHTS = Dict(0 => ' ',
 			  1 => '▏',
 			  2 => '▎',
@@ -25,28 +26,19 @@ Decorate an iterable object, returning an iterator which acts exactly
 like the original iterable, but prints a dynamically updating
 progressbar every time a value is requested.
 """
-type tqdm
+mutable struct tqdm
     wrapped::Any
     total::Int
     current::Int
     width::Int
     start_time::DateTime
-    
+
     function tqdm(wrapped::Any; total::Int = -1, width = 80)
         this = new()
         this.wrapped = wrapped
         this.width = width
         this.start_time = now()
-
-        iteratorSize = Base.iteratorsize(wrapped)
-        if (iteratorSize == Base.HasShape()) || (iteratorSize == Base.HasLength())
-            this.total = length(wrapped)
-        elseif (iteratorSize == Base.IsInfinite())
-            this.total = -1
-        else
-            this.total = total
-        end
-
+        this.total = length(wrapped)
         return this
     end
 end
@@ -107,25 +99,25 @@ function display_progress(t::tqdm)
     print("┫")
 end
 
-function Base.start(t::tqdm)
-    t.current = -1
-    t.start_time = now()
-    return Base.start(t.wrapped)
+function Base.iterate(iter::tqdm)
+    iter.start_time = now()
+    iter.current = -1
+    return iterate(iter.wrapped)
 end
 
-function Base.next(t::tqdm, state)
-    t.current += 1
-    display_progress(t)
-    return Base.next(t.wrapped, state)
-end
 
-function Base.done(t::tqdm, state)
-	isDone = Base.done(t.wrapped, state)
-	if isDone
-		t.current = t.total
-		display_progress(t)
-	end
-    return isDone
+function Base.iterate(iter::tqdm,s)
+    iter.current += 1
+    display_progress(iter)
+    state = iterate(iter.wrapped,s)
+    if state===nothing
+        iter.current = iter.total
+        display_progress(iter)
+        return nothing
+    end
+    return state
 end
+Base.length(iter::tqdm) = length(iter.wrapped)
+Base.eltype(iter::tqdm) = eltype(iter.wrapped)
 
 end # module
