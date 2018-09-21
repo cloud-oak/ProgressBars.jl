@@ -8,7 +8,7 @@ Usage:
 """
 module Tqdm
 
-using Dates, Printf
+using Printf
 
 EIGHTS = Dict(0 => ' ',
 			  1 => '▏',
@@ -31,21 +31,25 @@ mutable struct tqdm
     total::Int
     current::Int
     width::Int
-    start_time::DateTime
+    start_time::UInt
 
-    function tqdm(wrapped::Any; total::Int = -1, width = 80)
+    function tqdm(wrapped::Any; total::Int = -1, width = 100)
         this = new()
         this.wrapped = wrapped
         this.width = width
-        this.start_time = now()
+        this.start_time = time_ns()
         this.total = length(wrapped)
         return this
     end
 end
 
 function format(seconds)
-    mins, s = divrem(round(seconds), 60)
-    h, m    = divrem(mins, 60)
+    if seconds != Inf
+        mins,s  = divrem(round(Int,seconds), 60)
+        h, m    = divrem(mins, 60)
+    else
+        h=0;m=Inf;s=Inf
+    end
     if h!=0
          return @sprintf("%02d:%02d:%02d",h,m,s)
     else
@@ -59,17 +63,22 @@ function display_progress(t::tqdm)
     else
         if (t.current > 0)
             iteration = t.current - 1
-            seconds   = (now() - t.start_time).value / 1000
+            seconds   = (time_ns() - t.start_time) * 1e-9
             speed     = iteration / seconds
-            ETA       = t.total / iteration * seconds
+            ETA       = (t.total-t.current) / speed
+
         else
             ETA = Inf; speed = 0.0; seconds = Inf
         end
 
         percentage_string = string(@sprintf("%.2f%%",t.current/t.total*100))
     end
+    status_string = string(t.current,"/",t.total,
+                            " [", format(seconds), "<", format(ETA),
+                            " , ", @sprintf("%.2f it/s", speed),"]")
 
-    width = t.width - length(percentage_string) - 2
+    width = t.width - length(percentage_string)-length(status_string) - 2
+
     print(percentage_string)
     print("┣")
 
@@ -91,15 +100,13 @@ function display_progress(t::tqdm)
         end
     end
     print("┫ ")
-    status_string = string(t.current,"/",t.total,
-                            " [", format(seconds), "<", format(ETA),
-                            " , ", @sprintf("%.2f it/s", speed),"]")
+
     print(status_string)
 
 end
 
 function Base.iterate(iter::tqdm)
-    iter.start_time = now()
+    iter.start_time = time_ns()
     iter.current = -1
     return iterate(iter.wrapped)
 end
