@@ -20,7 +20,7 @@ EIGHTS = Dict(0 => ' ',
 			  7 => '▉',
 			  8 => '█')
 
-export tqdm
+export tqdm, set_description
 """
 Decorate an iterable object, returning an iterator which acts exactly
 like the original iterable, but prints a dynamically updating
@@ -32,6 +32,7 @@ mutable struct tqdm
     current::Int
     width::Int
     start_time::UInt
+    description::AbstractString
 
     function tqdm(wrapped::Any; total::Int = -1, width = 100)
         this = new()
@@ -39,6 +40,7 @@ mutable struct tqdm
         this.width = width
         this.start_time = time_ns()
         this.total = length(wrapped)
+        this.description = ""
         return this
     end
 end
@@ -67,18 +69,23 @@ function display_progress(t::tqdm)
             seconds   = (time_ns() - t.start_time) * 1e-9
             speed     = iteration / seconds
             ETA       = (t.total-t.current) / speed
-
         else
             ETA = Inf; speed = 0.0; seconds = Inf
         end
 
         percentage_string = string(@sprintf("%.2f%%",t.current/t.total*100))
     end
-    status_string = string(t.current,"/",t.total,
-                            " [", format_time(seconds), "<", format_time(ETA),
-                            " , ", @sprintf("%.2f it/s", speed),"]")
 
-    width = t.width - length(percentage_string)-length(status_string) - 2
+    elapsed = format_time(seconds)
+    eta     = format_time(ETA)
+    iterations_per_second = @sprintf("%.2f it/s", speed)
+
+    status_string = "$(t.current)/$(t.total) $elapsed<$eta, $iterations_per_second]"
+    width = t.width - length(percentage_string) - length(status_string) - 2
+    if t.description != ""
+      width -= length(t.description) + 1
+      print(t.description * " ")
+    end
 
     print(percentage_string)
     print("┣")
@@ -104,6 +111,10 @@ function display_progress(t::tqdm)
 
     print(status_string)
 
+end
+
+function set_description(t::tqdm, description::AbstractString)
+  t.description = description
 end
 
 function Base.iterate(iter::tqdm)
