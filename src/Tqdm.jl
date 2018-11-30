@@ -43,7 +43,7 @@ mutable struct tqdm
     end
 end
 
-function format(seconds)
+function format_time(seconds)
     if seconds != Inf
         mins,s  = divrem(round(Int,seconds), 60)
         h, m    = divrem(mins, 60)
@@ -56,6 +56,7 @@ function format(seconds)
          return @sprintf("%02d:%02d",m,s)
     end
 end
+
 function display_progress(t::tqdm)
     print(repeat("\r", t.width))
     if (t.total <= 0)
@@ -74,7 +75,7 @@ function display_progress(t::tqdm)
         percentage_string = string(@sprintf("%.2f%%",t.current/t.total*100))
     end
     status_string = string(t.current,"/",t.total,
-                            " [", format(seconds), "<", format(ETA),
+                            " [", format_time(seconds), "<", format_time(ETA),
                             " , ", @sprintf("%.2f it/s", speed),"]")
 
     width = t.width - length(percentage_string)-length(status_string) - 2
