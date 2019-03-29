@@ -1,10 +1,17 @@
-using Tqdm,Test,Printf
-# write your own tests here
+using ProgressBars, Test, Printf
 
-for i in tqdm([1,2,3,4])
+# Basic Test
+for i in ProgressBar(1:10)
 end
+@test true
 
-iter = tqdm(1:100)
+# Test alias
+for i in tqdm(1:10)
+end
+@test true
+
+# Test with description
+iter = ProgressBar(1:100)
 for i in iter
   # ... Neural Network Training Code
   loss = exp(-i)

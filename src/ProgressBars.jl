@@ -1,12 +1,12 @@
 """
 Customisable progressbar decorator for iterators.
 Usage:
-> using Tqdm
-> for i in tqdm(1:10)
+> using ProgressBars
+> for i in ProgressBar(1:10)
 > ....
 > end
 """
-module Tqdm
+module ProgressBars
 
 using Printf
 
@@ -20,13 +20,13 @@ EIGHTS = Dict(0 => ' ',
               7 => '▉',
               8 => '█')
 
-export tqdm, set_description
+export ProgressBar, tqdm, set_description
 """
 Decorate an iterable object, returning an iterator which acts exactly
 like the original iterable, but prints a dynamically updating
 progressbar every time a value is requested.
 """
-mutable struct tqdm
+mutable struct ProgressBar
   wrapped::Any
   total::Int
   current::Int
@@ -34,7 +34,7 @@ mutable struct tqdm
   start_time::UInt
   description::AbstractString
 
-  function tqdm(wrapped::Any; total::Int = -1, width = 100)
+  function ProgressBar(wrapped::Any; total::Int = -1, width = 100)
     this = new()
     this.wrapped = wrapped
     this.width = width
@@ -44,6 +44,9 @@ mutable struct tqdm
     return this
   end
 end
+
+# Keep the old name as an alias
+tqdm = ProgressBar
 
 function format_time(seconds)
   if seconds != Inf
@@ -59,7 +62,7 @@ function format_time(seconds)
   end
 end
 
-function display_progress(t::tqdm)
+function display_progress(t::ProgressBar)
   print(repeat("\r", t.width))
   if (t.total <= 0)
     percentage_string = string(t.current)
@@ -113,18 +116,18 @@ function display_progress(t::tqdm)
 
 end
 
-function set_description(t::tqdm, description::AbstractString)
+function set_description(t::ProgressBar, description::AbstractString)
   t.description = description
 end
 
-function Base.iterate(iter::tqdm)
+function Base.iterate(iter::ProgressBar)
   iter.start_time = time_ns()
   iter.current = -1
   return iterate(iter.wrapped)
 end
 
 
-function Base.iterate(iter::tqdm,s)
+function Base.iterate(iter::ProgressBar,s)
   iter.current += 1
   display_progress(iter)
   state = iterate(iter.wrapped,s)
@@ -135,7 +138,7 @@ function Base.iterate(iter::tqdm,s)
   end
   return state
 end
-Base.length(iter::tqdm) = length(iter.wrapped)
-Base.eltype(iter::tqdm) = eltype(iter.wrapped)
+Base.length(iter::ProgressBar) = length(iter.wrapped)
+Base.eltype(iter::ProgressBar) = eltype(iter.wrapped)
 
 end # module
