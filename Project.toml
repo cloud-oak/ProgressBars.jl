@@ -1,7 +1,7 @@
 name = "ProgressBars"
 uuid = "a73858fe-bd08-11e8-065c-3dfff236a6cd"
 authors = ["Konrad Heidler <k.heidler@tum.de>"]
-version = "0.1.1"
+version = "0.2.0"
 
 [deps]
 Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
