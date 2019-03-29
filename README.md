@@ -1,9 +1,19 @@
-# Tqdm
+# ProgressBars.jl (formerly Tqdm.jl)
 A fast, extensible progress bar for Julia. This is a Julia clone of the great Python package  [`tqdm`](https://pypi.python.org/pypi/tqdm).
 
 ## Usage
 ```julia
-julia> using Tqdm
+julia> using ProgressBars
+
+julia> for i in ProgressBar(1:100000) #wrap any iterator
+          #code
+       end
+100.00%┣████████████████████████████████████████████████▉┫ 100000/100000 [00:12<00:00 , 8616.43 it/s]
+```
+There is a `tqdm` alias, so that people coming from python will feel right at home :)
+
+```julia
+julia> using ProgressBars
 
 julia> for i in tqdm(1:100000) #wrap any iterator
           #code
@@ -13,7 +23,7 @@ julia> for i in tqdm(1:100000) #wrap any iterator
 
 Or with a set description (e.g. for loss values when training neural networks)
 ```julia
-julia> iter = tqdm(1:100)
+julia> iter = ProgressBar(1:100)
        for i in iter
           # ... Neural Network Training Code
           loss = exp(-i)
@@ -21,3 +31,5 @@ julia> iter = tqdm(1:100)
        end
 Loss: 0.02 3.00%┣█▌                                                  ┫ 3/100 00:00<00:02, 64.27 it/s]
 ```
+
+
