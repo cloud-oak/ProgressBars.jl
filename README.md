@@ -10,3 +10,14 @@ julia> for i in tqdm(1:100000) #wrap any iterator
        end
 100.00%┣████████████████████████████████████████████████▉┫ 100000/100000 [00:12<00:00 , 8616.43 it/s]
 ```
+
+Or with a set description (e.g. for loss values when training neural networks)
+```julia
+julia> iter = tqdm(1:100)
+       for i in iter
+          # ... Neural Network Training Code
+          loss = exp(-i)
+          set_description(iter, string(@sprintf("Loss: %.2f", loss)))
+       end
+Loss: 0.02 3.00%┣█▌                                                  ┫ 3/100 00:00<00:02, 64.27 it/s]
+```
