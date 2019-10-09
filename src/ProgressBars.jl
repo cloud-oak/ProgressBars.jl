@@ -32,6 +32,7 @@ mutable struct ProgressBar
   current::Int
   width::Int
   start_time::UInt
+  last_print::UInt
   description::AbstractString
 
   function ProgressBar(wrapped::Any; total::Int = -1, width = 100)
@@ -39,6 +40,7 @@ mutable struct ProgressBar
     this.wrapped = wrapped
     this.width = width
     this.start_time = time_ns()
+    this.last_print = this.start_time
     this.total = length(wrapped)
     this.description = ""
     return this
@@ -129,7 +131,10 @@ end
 
 function Base.iterate(iter::ProgressBar,s)
   iter.current += 1
-  display_progress(iter)
+  if(time_ns() - iter.last_print > 0.05 * 1e9)
+    display_progress(iter)
+    iter.last_print = time_ns()
+  end
   state = iterate(iter.wrapped,s)
   if state===nothing
     iter.current = iter.total
