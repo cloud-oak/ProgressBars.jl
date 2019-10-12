@@ -139,6 +139,7 @@ function Base.iterate(iter::ProgressBar,s)
   if state===nothing
     iter.current = iter.total
     display_progress(iter)
+    println()
     return nothing
   end
   return state
