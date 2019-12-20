@@ -48,7 +48,7 @@ mutable struct ProgressBar
     this.mutex = Threads.SpinLock()
     this.current = 0
 
-    if total === -1  # No total given
+    if total == -1  # No total given
       try
         this.total = length(wrapped)
       catch 
@@ -170,7 +170,7 @@ function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
   lock(iter.mutex)
   iter.current += 1
   if(time_ns() - iter.last_print > PRINTING_DELAY
-     || iter.current === iter.total)
+     || iter.current == iter.total)
     display_progress(iter)
     iter.last_print = time_ns()
   end
