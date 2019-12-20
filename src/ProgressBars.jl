@@ -139,7 +139,8 @@ end
 
 function Base.iterate(iter::ProgressBar)
   iter.start_time = time_ns() - PRINTING_DELAY
-  iter.current = -1
+  iter.current = 0
+  display_progress(iter)
   return iterate(iter.wrapped)
 end
 
@@ -169,10 +170,13 @@ function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
   item = Base.unsafe_getindex(iter.wrapped, index)
   lock(iter.mutex)
   iter.current += 1
-  if(time_ns() - iter.last_print > PRINTING_DELAY
-     || iter.current == iter.total)
+  if time_ns() - iter.last_print > PRINTING_DELAY
     display_progress(iter)
     iter.last_print = time_ns()
+  elseif iter.current == iter.total
+    # Reached end of iteration
+    display_progress(iter)
+    println()
   end
   unlock(iter.mutex)
   return item
