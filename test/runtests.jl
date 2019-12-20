@@ -26,3 +26,11 @@ for i in iter
 end
 toc = time_ns()
 @test (toc - tic) / 1e9 < 1
+
+# Test Threads for Julia 1.3
+if VERSION >= v"1.3.0"
+  a = []
+  Threads.@threads for i in ProgressBar(1:1000)
+    push!(a, i * 2)
+  end
+end
