@@ -20,6 +20,8 @@ EIGHTS = Dict(0 => ' ',
               7 => '▉',
               8 => '█')
 
+PRINTING_DELAY = 0.05 * 1e9
+
 export ProgressBar, tqdm, set_description
 """
 Decorate an iterable object, returning an iterator which acts exactly
@@ -34,15 +36,28 @@ mutable struct ProgressBar
   start_time::UInt
   last_print::UInt
   description::AbstractString
+  mutex::Threads.SpinLock
 
   function ProgressBar(wrapped::Any; total::Int = -1, width = 100)
     this = new()
     this.wrapped = wrapped
     this.width = width
     this.start_time = time_ns()
-    this.last_print = this.start_time
-    this.total = length(wrapped)
+    this.last_print = this.start_time - 2 * PRINTING_DELAY
     this.description = ""
+    this.mutex = Threads.SpinLock()
+    this.current = 0
+
+    if total == -1  # No total given
+      try
+        this.total = length(wrapped)
+      catch 
+        this.total = -1
+      end
+    else
+      this.total = total
+    end
+
     return this
   end
 end
@@ -123,15 +138,15 @@ function set_description(t::ProgressBar, description::AbstractString)
 end
 
 function Base.iterate(iter::ProgressBar)
-  iter.start_time = time_ns()
-  iter.current = -1
+  iter.start_time = time_ns() - PRINTING_DELAY
+  iter.current = 0
+  display_progress(iter)
   return iterate(iter.wrapped)
 end
 
-
 function Base.iterate(iter::ProgressBar,s)
   iter.current += 1
-  if(time_ns() - iter.last_print > 0.05 * 1e9)
+  if(time_ns() - iter.last_print > PRINTING_DELAY)
     display_progress(iter)
     iter.last_print = time_ns()
   end
@@ -146,5 +161,25 @@ function Base.iterate(iter::ProgressBar,s)
 end
 Base.length(iter::ProgressBar) = length(iter.wrapped)
 Base.eltype(iter::ProgressBar) = eltype(iter.wrapped)
+
+function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
+  """
+  Base.unsafe_getindex is used by the `Threads.@threads for ... in ...` macro.
+  This wrapper will do weird things when used directly.
+  """
+  item = Base.unsafe_getindex(iter.wrapped, index)
+  lock(iter.mutex)
+  iter.current += 1
+  if time_ns() - iter.last_print > PRINTING_DELAY
+    display_progress(iter)
+    iter.last_print = time_ns()
+  elseif iter.current == iter.total
+    # Reached end of iteration
+    display_progress(iter)
+    println()
+  end
+  unlock(iter.mutex)
+  return item
+end
 
 end # module

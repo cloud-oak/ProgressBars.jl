@@ -41,4 +41,12 @@ julia> iter = ProgressBar(1:100)
 Loss: 0.02 3.00%┣█▌                                                  ┫ 3/100 00:00<00:02, 64.27 it/s]
 ```
 
+Now with added support for `Threads.@threads for`:
 
+```julia
+julia> a = []
+       Threads.@threads for i in ProgressBar(1:1000)
+         push!(a, i * 2)
+       end
+100.00%┣█████████████████████████████████████████████████████▉┫ 1000/1000 00:00<00:00, 28753.50 it/s]
+```
