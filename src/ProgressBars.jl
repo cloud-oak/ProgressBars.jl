@@ -80,7 +80,6 @@ function format_time(seconds)
 end
 
 function display_progress(t::ProgressBar)
-  print(repeat("\r", t.width))
   if (t.total <= 0)
     percentage_string = string(t.current)
   else
@@ -107,6 +106,7 @@ function display_progress(t::ProgressBar)
     print(t.description * " ")
   end
 
+  print("\r")
   print(percentage_string)
   print("┣")
 
