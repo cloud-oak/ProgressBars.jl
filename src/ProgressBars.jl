@@ -20,6 +20,10 @@ EIGHTS = Dict(0 => ' ',
               7 => '▉',
               8 => '█')
 
+# Split this because UTF-8 indexing is horrible otherwise
+# IDLE = collect("◢◤ ")
+IDLE = collect("╱   ")
+
 PRINTING_DELAY = 0.05 * 1e9
 
 export ProgressBar, tqdm, set_description
@@ -38,7 +42,7 @@ mutable struct ProgressBar
   description::AbstractString
   mutex::Threads.SpinLock
 
-  function ProgressBar(wrapped::Any; total::Int = -1, width = 100)
+  function ProgressBar(wrapped::Any; total::Int = -2, width = 100)
     this = new()
     this.wrapped = wrapped
     this.width = width
@@ -48,7 +52,7 @@ mutable struct ProgressBar
     this.mutex = Threads.SpinLock()
     this.current = 0
 
-    if total == -1  # No total given
+    if total == -2  # No total given
       try
         this.total = length(wrapped)
       catch 
@@ -70,7 +74,9 @@ function format_time(seconds)
     mins,s  = divrem(round(Int,seconds), 60)
     h, m    = divrem(mins, 60)
   else
-    h=0;m=Inf;s=Inf
+    h = 0
+    m = Inf
+    s = Inf
   end
   if h!=0
     return @sprintf("%02d:%02d:%02d",h,m,s)
@@ -80,57 +86,55 @@ function format_time(seconds)
 end
 
 function display_progress(t::ProgressBar)
-  if (t.total <= 0)
-    percentage_string = string(t.current)
-  else
-    if (t.current > 0)
-      iteration = t.current - 1
-      seconds   = (time_ns() - t.start_time) * 1e-9
-      speed     = iteration / seconds
-      ETA       = (t.total-t.current) / speed
-    else
-      ETA = Inf; speed = 0.0; seconds = Inf
-    end
-
-    percentage_string = string(@sprintf("%.2f%%",t.current/t.total*100))
-  end
+  seconds = (time_ns() - t.start_time) * 1e-9
+  iteration = t.current - 1
 
   elapsed = format_time(seconds)
-  eta     = format_time(ETA)
-  iterations_per_second = @sprintf("%.2f it/s", speed)
+  speed = iteration / seconds
+  iterations_per_second = @sprintf("%.1f it/s", speed)
 
-  status_string = "$(t.current)/$(t.total) $elapsed<$eta, $iterations_per_second]"
-  width = t.width - length(percentage_string) - length(status_string) - 2
+  barwidth = t.width - 2 # minus two for the separators
+
+  # Reset Cursor to beginning of the line
+  print("\r")
+
   if t.description != ""
-    width -= length(t.description) + 1
+    barwidth -= length(t.description) + 1
     print(t.description * " ")
   end
 
-  print("\r")
-  print(percentage_string)
-  print("┣")
-
   if (t.total <= 0)
-    offset = t.current % 10
-    print(repeat(" ", offset))
-    segments, remain = divrem(width - offset, 10)
-    print(repeat("/         ", Int(segments)))
-    print(repeat(" ", Int(remain)))
+    status_string = "$(t.current)it $elapsed [$iterations_per_second]"
+    barwidth -= length(status_string) + 1
+
+    print("┣")
+    print(join(IDLE[1 + ((i + t.current) % length(IDLE))] for i in 1:barwidth))
+    print("┫ ")
+    print(status_string)
   else
-    cellvalue = t.total / width
+    ETA = (t.total-t.current) / speed
+
+    percentage_string = string(@sprintf("%.1f%%",t.current/t.total*100))
+
+    eta     = format_time(ETA)
+    status_string = "$(t.current)/$(t.total) [$elapsed<$eta, $iterations_per_second]"
+    barwidth -= length(status_string) + length(percentage_string) + 1
+
+    cellvalue = t.total / barwidth
     full_cells, remain = divrem(t.current, cellvalue)
+
+    print(percentage_string)
+    print("┣")
     print(repeat("█", Int(full_cells)))
-
-    if (full_cells < width)
-      part = Int(floor(8 * remain / cellvalue))
+    if (full_cells < barwidth)
+      part = Int(floor(9 * remain / cellvalue))
       print(EIGHTS[part])
-      print(repeat(" ", Int(width - full_cells - 1)))
+      print(repeat(" ", Int(barwidth - full_cells - 1)))
     end
+
+    print("┫ ")
+    print(status_string)
   end
-  print("┫ ")
-
-  print(status_string)
-
 end
 
 function set_description(t::ProgressBar, description::AbstractString)
@@ -151,7 +155,7 @@ function Base.iterate(iter::ProgressBar,s)
     iter.last_print = time_ns()
   end
   state = iterate(iter.wrapped,s)
-  if state===nothing
+  if state == nothing
     iter.current = iter.total
     display_progress(iter)
     println()
