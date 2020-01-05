@@ -168,10 +168,39 @@ Base.eltype(iter::ProgressBar) = eltype(iter.wrapped)
 
 function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
   """
-  Base.unsafe_getindex is used by the `Threads.@threads for ... in ...` macro.
+  Base.unsafe_getindex is used by the `Threads.@threads for ... in ...` macro
+  in julia 1.3.
   This wrapper will do weird things when used directly.
   """
   item = Base.unsafe_getindex(iter.wrapped, index)
+  lock(iter.mutex)
+  iter.current += 1
+  if time_ns() - iter.last_print > PRINTING_DELAY
+    display_progress(iter)
+    iter.last_print = time_ns()
+  elseif iter.current == iter.total
+    # Reached end of iteration
+    display_progress(iter)
+    println()
+  end
+  unlock(iter.mutex)
+  return item
+end
+
+function Base.firstindex(iter::ProgressBar)
+  iter.start_time = time_ns() - PRINTING_DELAY
+  iter.current = 0
+  display_progress(iter)
+  return Base.firstindex(iter.wrapped)
+end
+
+function Base.getindex(iter::ProgressBar, index::Int64)
+  """
+  Base.getindex is used by the `Threads.@threads for ... in ...` macro
+  from julia 1.4 on.
+  This wrapper will do weird things when used directly.
+  """
+  item = Base.getindex(iter.wrapped, index)
   lock(iter.mutex)
   iter.current += 1
   if time_ns() - iter.last_print > PRINTING_DELAY
