@@ -110,6 +110,9 @@ function display_progress(t::ProgressBar)
   if (t.total <= 0)
     status_string = "$(t.current)it $elapsed [$iterations_per_second$postfix_string]"
     barwidth -= length(status_string) + 1
+    if barwidth < 0
+      barwidth = 0
+    end
 
     print("┣")
     print(join(IDLE[1 + ((i + t.current) % length(IDLE))] for i in 1:barwidth))
@@ -122,7 +125,11 @@ function display_progress(t::ProgressBar)
 
     eta     = format_time(ETA)
     status_string = "$(t.current)/$(t.total) [$elapsed<$eta, $iterations_per_second$postfix_string]"
+
     barwidth -= length(status_string) + length(percentage_string) + 1
+    if barwidth < 0
+      barwidth = 0
+    end
 
     cellvalue = t.total / barwidth
     full_cells, remain = divrem(t.current, cellvalue)
