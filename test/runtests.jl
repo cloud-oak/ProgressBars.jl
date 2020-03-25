@@ -27,6 +27,15 @@ for i in iter
   set_description(iter, string(@sprintf("Loss: %.2f", loss)))
 end
 @test true
+#
+# Test with postfix
+iter = ProgressBar(1:1000)
+for i in iter
+  sleep(0.001)
+  loss = exp(-i / 1000)
+  set_postfix(iter, Loss=@sprintf("%.2f", loss))
+end
+@test true
 
 iter = ProgressBar(1:1000)
 tic = time_ns()
