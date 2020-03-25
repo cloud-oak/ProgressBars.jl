@@ -41,6 +41,17 @@ julia> iter = ProgressBar(1:100)
 Loss: 0.02 3.00%┣█▌                                                  ┫ 3/100 00:00<00:02, 64.27 it/s]
 ```
 
+Postfixes are also possible, if that's your kind of thing:
+```julia
+julia> iter = ProgressBar(1:100)
+       for i in iter
+          # ... Neural Network Training Code
+          loss = exp(-i)
+          set_postfix(iter, Loss=@sprintf("%.2f", loss))
+       end
+100.0%┣████████████████████████████████████████████┫ 1000/1000 [00:02<00:00, 420.4 it/s, Loss: 0.37]
+```
+
 Now with added support for `Threads.@threads for`:
 
 ```julia
