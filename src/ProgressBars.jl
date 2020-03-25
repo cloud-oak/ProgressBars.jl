@@ -43,7 +43,7 @@ mutable struct ProgressBar
   postfix::NamedTuple
   mutex::Threads.SpinLock
 
-  function ProgressBar(wrapped::Any; total::Int = -2, width = 100)
+  function ProgressBar(wrapped::Any; total::Int = -2, width = displaysize(stdout)[2])
     this = new()
     this.wrapped = wrapped
     this.width = width
