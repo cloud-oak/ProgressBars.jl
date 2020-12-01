@@ -12,6 +12,10 @@ for i in bar
 end
 @test true
 
+# Length 1 iteration test
+for i in ProgressBar(1:1)
+end
+
 # Test alias
 for i in tqdm(1:1000)
   sleep(0.001)

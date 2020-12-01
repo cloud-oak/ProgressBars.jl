@@ -72,8 +72,8 @@ end
 tqdm = ProgressBar
 
 function format_time(seconds)
-  if seconds != Inf
-    mins,s  = divrem(round(Int,seconds), 60)
+  if isfinite(seconds)
+    mins,s  = divrem(round(Int, seconds), 60)
     h, m    = divrem(mins, 60)
   else
     h = 0
