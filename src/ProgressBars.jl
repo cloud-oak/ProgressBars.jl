@@ -213,9 +213,11 @@ function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
 end
 
 function Base.firstindex(iter::ProgressBar)
+  lock(iter.mutex)
   iter.start_time = time_ns() - PRINTING_DELAY
   iter.current = 0
   display_progress(iter)
+  unlock(iter.mutex)
   return Base.firstindex(iter.wrapped)
 end
 
