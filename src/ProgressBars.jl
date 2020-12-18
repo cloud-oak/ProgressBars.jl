@@ -37,22 +37,25 @@ mutable struct ProgressBar
   total::Int
   current::Int
   width::Int
+  leave::Bool
   start_time::UInt
   last_print::UInt
   description::AbstractString
   postfix::NamedTuple
   mutex::Threads.SpinLock
 
-  function ProgressBar(wrapped::Any; total::Int = -2, width = displaysize(stdout)[2])
+  function ProgressBar(wrapped::Any; total::Int = -2, width = displaysize(stdout)[2], leave=true)
     this = new()
     this.wrapped = wrapped
     this.width = width
+    this.leave = leave
     this.start_time = time_ns()
     this.last_print = this.start_time - 2 * PRINTING_DELAY
     this.description = ""
     this.postfix = NamedTuple()
     this.mutex = Threads.SpinLock()
     this.current = 0
+
 
     if total == -2  # No total given
       try
@@ -152,6 +155,12 @@ function display_progress(t::ProgressBar)
   end
 end
 
+# Clear the progress bar
+function clear_progress(t::ProgressBar)
+  # Reset cursor, fill width with empty spaces, and then reset again
+  print("\r", " "^t.width, "\r")
+end
+
 function set_description(t::ProgressBar, description::AbstractString)
   t.description = description
 end
@@ -183,7 +192,11 @@ function Base.iterate(iter::ProgressBar,s)
       iter.current = iter.total
     end
     display_progress(iter)
-    println()
+    if iter.leave
+      println()
+    else
+      clear_progress(iter)
+    end
     return nothing
   end
   return state
@@ -206,7 +219,11 @@ function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
   elseif iter.current == iter.total
     # Reached end of iteration
     display_progress(iter)
-    println()
+    if iter.leave
+      println()
+    else
+      clear_progress(iter)
+    end
   end
   unlock(iter.mutex)
   return item
@@ -236,7 +253,11 @@ function Base.getindex(iter::ProgressBar, index::Int64)
   elseif iter.current == iter.total
     # Reached end of iteration
     display_progress(iter)
-    println()
+    if iter.leave
+      println()
+    else
+      clear_progress(iter)
+    end
   end
   unlock(iter.mutex)
   return item

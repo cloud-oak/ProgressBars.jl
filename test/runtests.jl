@@ -41,6 +41,14 @@ for i in iter
 end
 @test true
 
+# Test with leave=false
+iter = ProgressBar(1:1000, leave=false)
+for i in iter
+  sleep(0.001)
+end
+@test true
+
+
 iter = ProgressBar(1:1000)
 tic = time_ns()
 for i in iter
