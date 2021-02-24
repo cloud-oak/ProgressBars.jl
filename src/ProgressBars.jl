@@ -180,9 +180,17 @@ function Base.iterate(iter::ProgressBar)
   return iterate(iter.wrapped)
 end
 
-function Base.iterate(iter::ProgressBar,s)
+make_space_after_progress_bar() = print("\n"^2)
+
+function Base.iterate(iter::ProgressBar,s)  
   iter.current += 1
   if(time_ns() - iter.last_print > PRINTING_DELAY)
+    current_terminal_width = displaysize(stdout)[2]
+    terminal_width_changed = current_terminal_width != iter.width
+    if terminal_width_changed
+      iter.width = current_terminal_width
+      make_space_after_progress_bar()
+    end
     display_progress(iter)
     iter.last_print = time_ns()
   end
