@@ -37,6 +37,7 @@ mutable struct ProgressBar
   total::Int
   current::Int
   width::Int
+  fixwidth::Bool
   leave::Bool
   start_time::UInt
   last_print::UInt
@@ -44,10 +45,16 @@ mutable struct ProgressBar
   postfix::NamedTuple
   mutex::Threads.SpinLock
 
-  function ProgressBar(wrapped::Any; total::Int = -2, width = displaysize(stdout)[2], leave=true)
+  function ProgressBar(wrapped::Any; total::Int = -2, width = nothing, leave=true)
     this = new()
     this.wrapped = wrapped
-    this.width = width
+    if width == nothing
+        this.width = displaysize(stdout)[2]
+        this.fixwidth = false
+    else
+        this.width = width
+        this.fixwidth = true
+    end
     this.leave = leave
     this.start_time = time_ns()
     this.last_print = this.start_time - 2 * PRINTING_DELAY
@@ -185,11 +192,13 @@ make_space_after_progress_bar() = print("\n"^2)
 function Base.iterate(iter::ProgressBar,s)  
   iter.current += 1
   if(time_ns() - iter.last_print > PRINTING_DELAY)
-    current_terminal_width = displaysize(stdout)[2]
-    terminal_width_changed = current_terminal_width != iter.width
-    if terminal_width_changed
-      iter.width = current_terminal_width
-      make_space_after_progress_bar()
+    if !iter.fixwidth
+      current_terminal_width = displaysize(stdout)[2]
+      terminal_width_changed = current_terminal_width != iter.width
+      if terminal_width_changed
+        iter.width = current_terminal_width
+        make_space_after_progress_bar()
+      end
     end
     display_progress(iter)
     iter.last_print = time_ns()
