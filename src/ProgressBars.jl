@@ -26,7 +26,7 @@ IDLE = collect("╱   ")
 
 PRINTING_DELAY = 0.05 * 1e9
 
-export ProgressBar, tqdm, set_description, set_postfix
+export ProgressBar, tqdm, set_description, set_postfix, set_multiline_postfix
 """
 Decorate an iterable object, returning an iterator which acts exactly
 like the original iterable, but prints a dynamically updating
@@ -308,6 +308,25 @@ function Base.getindex(iter::ProgressBar, index::Int64)
   end
   unlock(iter.mutex)
   return item
+end
+
+function newline_to_spaces(string, terminal_width)
+  new_string = ""
+  width_cumulator = 0
+  for c in string
+    if c == '\n'
+      spaces_required = terminal_width - width_cumulator
+      new_string *= " "^spaces_required
+      width_cumulator = 0
+    else
+      new_string *= c
+      width_cumulator += 1
+    end
+    if width_cumulator == terminal_width
+      width_cumulator = 0
+    end
+  end
+  return new_string
 end
 
 end # module
