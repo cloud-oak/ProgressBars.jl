@@ -43,6 +43,8 @@ mutable struct ProgressBar
   last_print::UInt
   description::AbstractString
   postfix::NamedTuple
+  extra_lines::Int
+  multilinepostfix::AbstractString
   mutex::Threads.SpinLock
 
   function ProgressBar(wrapped::Any; total::Int = -2, width = nothing, leave=true)
@@ -60,6 +62,8 @@ mutable struct ProgressBar
     this.last_print = this.start_time - 2 * PRINTING_DELAY
     this.description = ""
     this.postfix = NamedTuple()
+    this.multilinepostfix = ""
+    this.extra_lines = 0
     this.mutex = Threads.SpinLock()
     this.current = 0
 
@@ -114,7 +118,10 @@ function display_progress(t::ProgressBar)
   postfix_string = postfix_repr(t.postfix)
 
   # Reset Cursor to beginning of the line
-  print("\r")
+  for line in 1:t.extra_lines
+    move_up_1_line()
+  end
+  go_to_start_of_line()
 
   if t.description != ""
     barwidth -= length(t.description) + 1
@@ -160,12 +167,20 @@ function display_progress(t::ProgressBar)
     print("┫ ")
     print(status_string)
   end
+  multiline_postfix_string = newline_to_spaces(t.multilinepostfix, t.width)
+  t.extra_lines = ceil(Int, length(multiline_postfix_string) / t.width) + 1
+  print(multiline_postfix_string)
+  println()
 end
 
-# Clear the progress bar
 function clear_progress(t::ProgressBar)
   # Reset cursor, fill width with empty spaces, and then reset again
   print("\r", " "^t.width, "\r")
+  for line in 1:(t.extra_lines)
+    erase_line()
+    move_up_1_line()
+  end
+  erase_line()
 end
 
 function set_description(t::ProgressBar, description::AbstractString)
@@ -174,6 +189,14 @@ end
 
 function set_postfix(t::ProgressBar; postfix...)
   t.postfix = values(postfix)
+end
+
+function set_multiline_postfix(t::ProgressBar, postfix::AbstractString)
+  mistakenly_used_newline_at_start = postfix[1] == '\n' && length(postfix) > 1
+  if mistakenly_used_newline_at_start
+    postfix = postfix[2:end]
+  end
+  t.multilinepostfix = postfix
 end
 
 function postfix_repr(postfix::NamedTuple)::AbstractString
@@ -187,7 +210,14 @@ function Base.iterate(iter::ProgressBar)
   return iterate(iter.wrapped)
 end
 
-make_space_after_progress_bar() = print("\n"^2)
+make_space_after_progress_bar(extra_lines) = print("\n"^(extra_lines + 2))
+erase_to_end_of_line() = print("\033[K")
+move_up_1_line() = print("\033[1A")
+go_to_start_of_line() = print("\r")
+erase_line() = begin
+  go_to_start_of_line()
+  erase_to_end_of_line()
+end
 
 function Base.iterate(iter::ProgressBar,s)  
   iter.current += 1
@@ -197,7 +227,7 @@ function Base.iterate(iter::ProgressBar,s)
       terminal_width_changed = current_terminal_width != iter.width
       if terminal_width_changed
         iter.width = current_terminal_width
-        make_space_after_progress_bar()
+        make_space_after_progress_bar(iter.extra_lines)
       end
     end
     display_progress(iter)
