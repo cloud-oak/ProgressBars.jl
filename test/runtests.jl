@@ -26,7 +26,7 @@ end
 iter = ProgressBar(1:5)
 for i in iter
   println(iter, "Printing from iteration $i")
-  sleep(0.05)
+  sleep(0.2)
 end
 
 # Test with description
