@@ -40,6 +40,25 @@ for i in iter
   set_postfix(iter, Loss=@sprintf("%.2f", loss))
 end
 @test true
+#
+# Test with multiline postfix
+iter = ProgressBar(1:1000)
+for i in iter
+  sleep(0.001)
+  loss = exp(-i / 1000)
+  set_multiline_postfix(iter, "Test 1: $(rand())\nTest 2: $(rand())\nTest 3: $loss")
+end
+@test true
+#
+# Test with both postfixes
+iter = ProgressBar(1:1000)
+for i in iter
+  sleep(0.001)
+  loss = exp(-i / 1000)
+  set_postfix(iter, Loss=@sprintf("%.2f", loss))
+  set_multiline_postfix(iter, "Test 1: $(rand())\nTest 2: $(rand())\nTest 3: $loss")
+end
+@test true
 
 # Test with leave=false
 iter = ProgressBar(1:1000, leave=false)

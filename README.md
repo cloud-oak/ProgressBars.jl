@@ -51,6 +51,19 @@ julia> iter = ProgressBar(1:100)
        end
 100.0%┣████████████████████████████████████████████┫ 1000/1000 [00:02<00:00, 420.4 it/s, Loss: 0.37]
 ```
+You can also use multi-line postfixes, like so:
+```julia
+julia> iter = ProgressBar(1:100)
+       for i in iter
+          # ... Neural Network Training Code
+          loss = exp(-i)
+          set_multiline_postfix(iter, "Test 1: $(rand())\nTest 2: $(rand())\nTest 3: $loss)")
+       end
+100.0%┣████████████████████████████████████████████┫ 1000/1000 [00:02<00:00, 420.4 it/s]
+Test1: 0.6740503146383823
+Test2: 0.23694728303439727
+Test3: 0.06787944117144233
+```
 
 Now with added support for `Threads.@threads for`:
 
