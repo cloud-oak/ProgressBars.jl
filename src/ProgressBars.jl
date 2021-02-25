@@ -203,13 +203,6 @@ function postfix_repr(postfix::NamedTuple)::AbstractString
   return join(map(tpl -> ", $(tpl[1]): $(tpl[2])", zip(keys(postfix), postfix)))
 end
 
-function Base.iterate(iter::ProgressBar)
-  iter.start_time = time_ns() - PRINTING_DELAY
-  iter.current = 0
-  display_progress(iter)
-  return iterate(iter.wrapped)
-end
-
 make_space_after_progress_bar(extra_lines) = print("\n"^(extra_lines + 2))
 erase_to_end_of_line() = print("\033[K")
 move_up_1_line() = print("\033[1A")
@@ -217,6 +210,34 @@ go_to_start_of_line() = print("\r")
 erase_line() = begin
   go_to_start_of_line()
   erase_to_end_of_line()
+end
+
+
+function newline_to_spaces(string, terminal_width)
+  new_string = ""
+  width_cumulator = 0
+  for c in string
+    if c == '\n'
+      spaces_required = terminal_width - width_cumulator
+      new_string *= " "^spaces_required
+      width_cumulator = 0
+    else
+      new_string *= c
+      width_cumulator += 1
+    end
+    if width_cumulator == terminal_width
+      width_cumulator = 0
+    end
+  end
+  return new_string
+end
+
+
+function Base.iterate(iter::ProgressBar)
+  iter.start_time = time_ns() - PRINTING_DELAY
+  iter.current = 0
+  display_progress(iter)
+  return iterate(iter.wrapped)
 end
 
 function Base.iterate(iter::ProgressBar,s)  
@@ -308,25 +329,6 @@ function Base.getindex(iter::ProgressBar, index::Int64)
   end
   unlock(iter.mutex)
   return item
-end
-
-function newline_to_spaces(string, terminal_width)
-  new_string = ""
-  width_cumulator = 0
-  for c in string
-    if c == '\n'
-      spaces_required = terminal_width - width_cumulator
-      new_string *= " "^spaces_required
-      width_cumulator = 0
-    else
-      new_string *= c
-      width_cumulator += 1
-    end
-    if width_cumulator == terminal_width
-      width_cumulator = 0
-    end
-  end
-  return new_string
 end
 
 end # module
