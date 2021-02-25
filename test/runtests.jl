@@ -18,15 +18,22 @@ end
 
 # Test alias
 for i in tqdm(1:1000)
-  sleep(0.001)
+  sleep(0.0001)
 end
 @test true
+
+# Print from within a ProgressBar Loop
+iter = ProgressBar(1:5)
+for i in iter
+  println(iter, "Printing from iteration $i")
+  sleep(0.05)
+end
 
 # Test with description
 iter = ProgressBar(1:1000)
 for i in iter
   # ... Neural Network Training Code
-  sleep(0.001)
+  sleep(0.0001)
   loss = exp(-i / 1000)
   set_description(iter, string(@sprintf("Loss: %.2f", loss)))
 end
@@ -35,7 +42,7 @@ end
 # Test with postfix
 iter = ProgressBar(1:1000)
 for i in iter
-  sleep(0.001)
+  sleep(0.0001)
   loss = exp(-i / 1000)
   set_postfix(iter, Loss=@sprintf("%.2f", loss))
 end
@@ -44,7 +51,7 @@ end
 # Test with multiline postfix
 iter = ProgressBar(1:1000)
 for i in iter
-  sleep(0.001)
+  sleep(0.0001)
   loss = exp(-i / 1000)
   set_multiline_postfix(iter, "Test 1: $(rand())\nTest 2: $(rand())\nTest 3: $loss")
 end
@@ -53,7 +60,7 @@ end
 # Test with both postfixes
 iter = ProgressBar(1:1000)
 for i in iter
-  sleep(0.001)
+  sleep(0.0001)
   loss = exp(-i / 1000)
   set_postfix(iter, Loss=@sprintf("%.2f", loss))
   set_multiline_postfix(iter, "Test 1: $(rand())\nTest 2: $(rand())\nTest 3: $loss")
@@ -63,7 +70,7 @@ end
 # Test with leave=false
 iter = ProgressBar(1:1000, leave=false)
 for i in iter
-  sleep(0.001)
+  sleep(0.0001)
 end
 @test true
 
@@ -77,7 +84,7 @@ toc = time_ns()
 @test (toc - tic) / 1e9 < 1
 
 for i in ProgressBar(1:100, total=-1)
-  sleep(0.01)
+  sleep(0.001)
 end
 
 # Test Threads for Julia 1.3
