@@ -41,6 +41,21 @@ julia> iter = ProgressBar(1:100)
 Loss: 0.02 3.00%┣█▌                                                  ┫ 3/100 00:00<00:02, 64.27 it/s]
 ```
 
+Printing persistent messages while using a ProgressBar:
+```julia
+julia> iter = ProgressBar(1:5)
+       for i in iter
+         println(iter, "Printing from iteration $i")
+         sleep(0.2)
+       end
+Printing from iteration 1
+Printing from iteration 2
+Printing from iteration 3
+Printing from iteration 4
+Printing from iteration 5
+100.0%┣██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████┫ 5/5 [00:03<00:00, 1.5 it/s]
+```
+
 Postfixes are also possible, if that's your kind of thing:
 ```julia
 julia> iter = ProgressBar(1:100)
