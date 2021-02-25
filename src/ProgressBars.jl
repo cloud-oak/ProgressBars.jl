@@ -206,6 +206,7 @@ end
 make_space_after_progress_bar(extra_lines) = print("\n"^(extra_lines + 2))
 erase_to_end_of_line() = print("\033[K")
 move_up_1_line() = print("\033[1A")
+move_down_1_line() = print("\033[1B")
 go_to_start_of_line() = print("\r")
 erase_line() = begin
   go_to_start_of_line()
@@ -286,7 +287,7 @@ function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
     iter.last_print = time_ns()
   elseif iter.current == iter.total
     # Reached end of iteration
-    display_progress(iter)
+    display_progress(itr)
     if iter.leave
       println()
     else
@@ -329,6 +330,21 @@ function Base.getindex(iter::ProgressBar, index::Int64)
   end
   unlock(iter.mutex)
   return item
+end
+
+function Base.println(t::ProgressBar, xs...)
+  # Reset Cursor to beginning of the line
+  for line in 1:t.extra_lines
+    move_up_1_line()
+    erase_line()
+  end
+  go_to_start_of_line()
+  println(xs...)
+  for line in 1:t.extra_lines
+    move_down_1_line()
+  end
+  println()
+  display_progress(t)
 end
 
 end # module
