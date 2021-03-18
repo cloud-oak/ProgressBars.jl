@@ -111,7 +111,7 @@ function display_progress(t::ProgressBar)
     # Dummy value of 1 it/s if no time has elapsed
     speed = 1
   end
-  iterations_per_second = @sprintf("%.1f it/s", speed)
+  iterations_per_second = speed >= 1 ? @sprintf("%.1f it/s", speed) : @sprintf("%.1f s/it",1/speed)
 
   barwidth = t.width - 2 # minus two for the separators
 
