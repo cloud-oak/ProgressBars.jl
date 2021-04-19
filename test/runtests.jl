@@ -94,3 +94,8 @@ if VERSION >= v"1.3.0"
     push!(a, i * 2)
   end
 end
+
+# Test custom unit
+for i in ProgressBar(1:100, unit="flobberwobbles")
+  sleep(0.001)
+end

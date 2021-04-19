@@ -41,13 +41,14 @@ mutable struct ProgressBar
   leave::Bool
   start_time::UInt
   last_print::UInt
-  description::AbstractString
   postfix::NamedTuple
   extra_lines::Int
+  unit::AbstractString
+  description::AbstractString
   multilinepostfix::AbstractString
   mutex::Threads.SpinLock
 
-  function ProgressBar(wrapped::Any; total::Int = -2, width = nothing, leave=true)
+  function ProgressBar(wrapped::Any; total::Int = -2, width = nothing, leave = true, unit = "it")
     this = new()
     this.wrapped = wrapped
     if width == nothing
@@ -60,8 +61,9 @@ mutable struct ProgressBar
     this.leave = leave
     this.start_time = time_ns()
     this.last_print = this.start_time - 2 * PRINTING_DELAY
-    this.description = ""
     this.postfix = NamedTuple()
+    this.description = ""
+    this.unit = unit
     this.multilinepostfix = ""
     this.extra_lines = 0
     this.mutex = Threads.SpinLock()
@@ -111,7 +113,13 @@ function display_progress(t::ProgressBar)
     # Dummy value of 1 it/s if no time has elapsed
     speed = 1
   end
-  iterations_per_second = speed >= 1 ? @sprintf("%.1f it/s", speed) : @sprintf("%.1f s/it",1/speed)
+
+  if speed >= 1
+    iterations_per_second = @sprintf("%.1f %s/s", speed, t.unit)
+  else
+    # TODO: This might fail if speed == 0
+    iterations_per_second = @sprintf("%.1f s/%s", 1 / speed, t.unit)
+  end
 
   barwidth = t.width - 2 # minus two for the separators
 
