@@ -53,7 +53,7 @@ Printing from iteration 2
 Printing from iteration 3
 Printing from iteration 4
 Printing from iteration 5
-100.0%┣██████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████████┫ 5/5 [00:03<00:00, 1.5 it/s]
+100.0%┣█████████████████████████████████████████████████████████████████┫ 5/5 [00:03<00:00, 1.5 it/s]
 ```
 
 Postfixes are also possible, if that's your kind of thing:
@@ -64,7 +64,7 @@ julia> iter = ProgressBar(1:100)
           loss = exp(-i)
           set_postfix(iter, Loss=@sprintf("%.2f", loss))
        end
-100.0%┣████████████████████████████████████████████┫ 1000/1000 [00:02<00:00, 420.4 it/s, Loss: 0.37]
+100.0%┣█████████████████████████████████████████████┫ 1000/1000 [00:02<00:00, 420.4 it/s, Loss: 0.37]
 ```
 You can also use multi-line postfixes, like so:
 ```julia
@@ -74,11 +74,13 @@ julia> iter = ProgressBar(1:100)
           loss = exp(-i)
           set_multiline_postfix(iter, "Test 1: $(rand())\nTest 2: $(rand())\nTest 3: $loss)")
        end
-100.0%┣████████████████████████████████████████████┫ 1000/1000 [00:02<00:00, 420.4 it/s]
+100.0%┣█████████████████████████████████████████████████████████┫ 1000/1000 [00:02<00:00, 420.4 it/s]
 Test1: 0.6740503146383823
 Test2: 0.23694728303439727
 Test3: 0.06787944117144233
 ```
+
+### Parallel for-loops
 
 Now with added support for `Threads.@threads for`:
 
@@ -88,4 +90,17 @@ julia> a = []
          push!(a, i * 2)
        end
 100.00%┣█████████████████████████████████████████████████████▉┫ 1000/1000 00:00<00:00, 28753.50 it/s]
+```
+
+
+### Printing Delay
+
+By default, the progress bar will update at most every 50ms in order to prevent the string IO from slowing down very fast iterations.
+This can be adjusted by passing the desired printing delay (in seconds) to the `printing_delay`-parameter when constructing the progress bar:
+
+```julia
+julia> for i in ProgressBar(1:1000, printing_delay=0.001)
+         # do stuff
+       end
+100.0%┣████████████████████████████████████████████████████████┫ 1000/1000 [00:00<00:00, 3006.8 it/s]
 ```
