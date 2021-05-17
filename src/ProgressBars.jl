@@ -24,8 +24,6 @@ EIGHTS = Dict(0 => ' ',
 # IDLE = collect("◢◤ ")
 IDLE = collect("╱   ")
 
-PRINTING_DELAY = 0.05 * 1e9
-
 export ProgressBar, tqdm, set_description, set_postfix, set_multiline_postfix
 """
 Decorate an iterable object, returning an iterator which acts exactly
@@ -43,12 +41,18 @@ mutable struct ProgressBar
   last_print::UInt
   postfix::NamedTuple
   extra_lines::Int
+  printing_delay::UInt
   unit::AbstractString
   description::AbstractString
   multilinepostfix::AbstractString
   mutex::Threads.SpinLock
 
-  function ProgressBar(wrapped::Any; total::Int = -2, width = nothing, leave = true, unit = "it")
+  function ProgressBar(wrapped::Any;
+                       total::Int=-2,
+                       width::Union{UInt, Nothing}=nothing,
+                       leave::Bool=true,
+                       unit::AbstractString="it",
+                       printing_delay::Number=0.05)
     this = new()
     this.wrapped = wrapped
     if width == nothing
@@ -59,8 +63,9 @@ mutable struct ProgressBar
         this.fixwidth = true
     end
     this.leave = leave
+    this.printing_delay = trunc(UInt, printing_delay * 1e9)
     this.start_time = time_ns()
-    this.last_print = this.start_time - 2 * PRINTING_DELAY
+    this.last_print = this.start_time - 2 * this.printing_delay
     this.postfix = NamedTuple()
     this.description = ""
     this.unit = unit
@@ -68,7 +73,6 @@ mutable struct ProgressBar
     this.extra_lines = 0
     this.mutex = Threads.SpinLock()
     this.current = 0
-
 
     if total == -2  # No total given
       try
@@ -243,7 +247,7 @@ end
 
 
 function Base.iterate(iter::ProgressBar)
-  iter.start_time = time_ns() - PRINTING_DELAY
+  iter.start_time = time_ns() - iter.printing_delay
   iter.current = 0
   display_progress(iter)
   return iterate(iter.wrapped)
@@ -251,7 +255,7 @@ end
 
 function Base.iterate(iter::ProgressBar,s)  
   iter.current += 1
-  if(time_ns() - iter.last_print > PRINTING_DELAY)
+  if(time_ns() - iter.last_print > iter.printing_delay)
     if !iter.fixwidth
       current_terminal_width = displaysize(stdout)[2]
       terminal_width_changed = current_terminal_width != iter.width
@@ -290,7 +294,7 @@ function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
   item = Base.unsafe_getindex(iter.wrapped, index)
   lock(iter.mutex)
   iter.current += 1
-  if time_ns() - iter.last_print > PRINTING_DELAY
+  if time_ns() - iter.last_print > iter.printing_delay
     display_progress(iter)
     iter.last_print = time_ns()
   elseif iter.current == iter.total
@@ -308,7 +312,7 @@ end
 
 function Base.firstindex(iter::ProgressBar)
   lock(iter.mutex)
-  iter.start_time = time_ns() - PRINTING_DELAY
+  iter.start_time = time_ns() - iter.printing_delay
   iter.current = 0
   display_progress(iter)
   unlock(iter.mutex)
@@ -324,7 +328,7 @@ function Base.getindex(iter::ProgressBar, index::Int64)
   item = Base.getindex(iter.wrapped, index)
   lock(iter.mutex)
   iter.current += 1
-  if time_ns() - iter.last_print > PRINTING_DELAY
+  if time_ns() - iter.last_print > iter.printing_delay
     display_progress(iter)
     iter.last_print = time_ns()
   elseif iter.current == iter.total
