@@ -17,7 +17,7 @@ julia> using ProgressBars
 julia> for i in ProgressBar(1:100000) #wrap any iterator
           #code
        end
-100.00%┣████████████████████████████████████████████████▉┫ 100000/100000 [00:12<00:00 , 8616.43 it/s]
+100.00%┣█████████████████████████████████████████████████┫ 100000/100000 [00:12<00:00 , 8616.43 it/s]
 ```
 There is a `tqdm` alias, so that people coming from python will feel right at home :)
 
@@ -27,7 +27,7 @@ julia> using ProgressBars
 julia> for i in tqdm(1:100000) #wrap any iterator
           #code
        end
-100.00%┣████████████████████████████████████████████████▉┫ 100000/100000 [00:12<00:00 , 8616.43 it/s]
+100.00%┣█████████████████████████████████████████████████┫ 100000/100000 [00:12<00:00 , 8616.43 it/s]
 ```
 
 Or with a set description (e.g. for loss values when training neural networks)
@@ -89,7 +89,7 @@ julia> a = []
        Threads.@threads for i in ProgressBar(1:1000)
          push!(a, i * 2)
        end
-100.00%┣█████████████████████████████████████████████████████▉┫ 1000/1000 00:00<00:00, 28753.50 it/s]
+100.00%┣██████████████████████████████████████████████████████┫ 1000/1000 00:00<00:00, 28753.50 it/s]
 ```
 
 
