@@ -273,9 +273,7 @@ function Base.iterate(iter::ProgressBar,s)
       iter.current = iter.total
     end
     display_progress(iter)
-    if iter.leave
-      println()
-    else
+    if !iter.leave
       clear_progress(iter)
     end
     return nothing
@@ -300,9 +298,7 @@ function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
   elseif iter.current == iter.total
     # Reached end of iteration
     display_progress(itr)
-    if iter.leave
-      println()
-    else
+    if !iter.leave
       clear_progress(iter)
     end
   end
@@ -334,9 +330,7 @@ function Base.getindex(iter::ProgressBar, index::Int64)
   elseif iter.current == iter.total
     # Reached end of iteration
     display_progress(iter)
-    if iter.leave
-      println()
-    else
+    if !iter.leave
       clear_progress(iter)
     end
   end
