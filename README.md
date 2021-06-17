@@ -30,6 +30,16 @@ julia> for i in tqdm(1:100000) #wrap any iterator
 100.00%┣█████████████████████████████████████████████████┫ 100000/100000 [00:12<00:00 , 8616.43 it/s]
 ```
 
+Iterating with a custom unit (e.g. bytes)
+```julia
+julia> iter = ProgressBar(1:2_000_000, unit="B", unit_scale=true)
+       for i in iter
+           # Do stuff
+       end
+100.0%┣██████████████████████████████████████████████████████████┫ 2.0MB/2.0MB [00:00<00:00, 4.8MB/s]
+```
+
+
 Or with a set description (e.g. for loss values when training neural networks)
 ```julia
 julia> iter = ProgressBar(1:100)

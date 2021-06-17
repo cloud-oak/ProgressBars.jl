@@ -43,6 +43,8 @@ mutable struct ProgressBar
   extra_lines::Int
   printing_delay::UInt
   unit::AbstractString
+  iter_unit::AbstractString
+  unit_scale::Bool
   description::AbstractString
   multilinepostfix::AbstractString
   mutex::Threads.SpinLock
@@ -51,7 +53,8 @@ mutable struct ProgressBar
                        total::Int=-2,
                        width::Union{UInt, Nothing}=nothing,
                        leave::Bool=true,
-                       unit::AbstractString="it",
+                       unit::AbstractString="",
+                       unit_scale::Bool=true,
                        printing_delay::Number=0.05)
     this = new()
     this.wrapped = wrapped
@@ -69,6 +72,8 @@ mutable struct ProgressBar
     this.postfix = NamedTuple()
     this.description = ""
     this.unit = unit
+    this.iter_unit = (unit == "") ? "it" : unit
+    this.unit_scale = unit_scale
     this.multilinepostfix = ""
     this.extra_lines = 0
     this.mutex = Threads.SpinLock()
@@ -107,6 +112,20 @@ function format_time(seconds)
   end
 end
 
+function format_amount(amount::Number, unit::AbstractString, unit_scale::Bool)
+  if unit_scale
+    if amount >= 1_000_000_000
+      return @sprintf("%.1fG%s", amount / 1_000_000_000., unit)
+    elseif amount >= 1_000_000
+      return @sprintf("%.1fM%s", amount / 1_000_000., unit)
+    elseif amount >= 1_000
+      return @sprintf("%.1fk%s", amount / 1_000., unit)
+    end
+    # We can fall through to the default case for amount < 1000 
+  end
+  return @sprintf("%d%s", amount, unit)
+end
+
 function display_progress(t::ProgressBar)
   seconds = (time_ns() - t.start_time) * 1e-9
   iteration = t.current - 1
@@ -119,10 +138,10 @@ function display_progress(t::ProgressBar)
   end
 
   if speed >= 1
-    iterations_per_second = @sprintf("%.1f %s/s", speed, t.unit)
+    iterations_per_second = format_amount(speed, "$(t.iter_unit)/s", t.unit_scale)
   else
     # TODO: This might fail if speed == 0
-    iterations_per_second = @sprintf("%.1f s/%s", 1 / speed, t.unit)
+    iterations_per_second = format_amount(1 / speed, "s/$(t.iter_unit)", t.unit_scale)
   end
 
   barwidth = t.width - 2 # minus two for the separators
@@ -141,7 +160,8 @@ function display_progress(t::ProgressBar)
   end
 
   if (t.total <= 0)
-    status_string = "$(t.current)it $elapsed [$iterations_per_second$postfix_string]"
+    current = format_amount(t.current, t.iter_unit, t.unit_scale)
+    status_string = "$(current) $elapsed [$iterations_per_second$postfix_string]"
     barwidth -= length(status_string) + 1
     if barwidth < 0
       barwidth = 0
@@ -156,8 +176,10 @@ function display_progress(t::ProgressBar)
 
     percentage_string = string(@sprintf("%.1f%%",t.current/t.total*100))
 
-    eta     = format_time(ETA)
-    status_string = "$(t.current)/$(t.total) [$elapsed<$eta, $iterations_per_second$postfix_string]"
+    eta = format_time(ETA)
+    current = format_amount(t.current, t.unit, t.unit_scale)   
+    total   = format_amount(t.total, t.unit, t.unit_scale)   
+    status_string = "$(current)/$(total) [$elapsed<$eta, $iterations_per_second$postfix_string]"
 
     barwidth -= length(status_string) + length(percentage_string) + 1
     if barwidth < 0
