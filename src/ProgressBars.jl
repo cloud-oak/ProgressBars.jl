@@ -61,7 +61,7 @@ mutable struct ProgressBar
     this = new()
     this.wrapped = wrapped
     if width == nothing
-        this.width = displaysize(stderr)[2]
+        this.width = displaysize(output_stream)[2]
         this.fixwidth = false
     else
         this.width = width
@@ -80,7 +80,7 @@ mutable struct ProgressBar
     this.extra_lines = 0
     this.mutex = Threads.SpinLock()
     this.current = 0
-    this.output_stream = stderr
+    this.output_stream = output_stream
 
     if total == -2  # No total given
       try
@@ -282,7 +282,7 @@ function Base.iterate(iter::ProgressBar,s)
   iter.current += 1
   if(time_ns() - iter.last_print > iter.printing_delay)
     if !iter.fixwidth
-      current_terminal_width = displaysize(stderr)[2]
+      current_terminal_width = displaysize(iter.output_stream)[2]
       terminal_width_changed = current_terminal_width != iter.width
       if terminal_width_changed
         iter.width = current_terminal_width
