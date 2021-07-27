@@ -3,14 +3,14 @@ using BenchmarkTools
 
 counter = 0
 function iterate(delay::Float64)
-    counter = 0
+    global counter = 0
     for i in ProgressBar(1:1000000, printing_delay=delay, output_stream=open("/dev/null", "w"))
         global counter += i
     end
 end
 
 function standard()
-    counter = 0
+    global counter = 0
     for i in 1:1000000
         global counter += 1
     end
