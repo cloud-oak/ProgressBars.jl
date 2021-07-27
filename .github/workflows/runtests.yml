@@ -20,3 +20,23 @@ jobs:
         with:
           version: ${{ matrix.julia-version }}
       - uses: julia-actions/julia-runtest@master
+  benchmark:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        julia-version: ['1.0', '1', 'nightly']
+        julia-arch: [x64, x86]
+        os: [ubuntu-latest, macOS-latest]
+        exclude:
+          - os: macOS-latest
+            julia-arch: x86
+    
+    steps:
+      - uses: actions/checkout@v1.0.0
+      - uses: julia-actions/setup-julia@latest
+        with:
+          version: ${{ matrix.julia-version }}
+      - name: "Benchmark iters"
+        run: |
+          julia -e "import Pkg; Pkg.add(Pkg.PackageSpec(name=\"ProgressBars\",path=\"$GITHUB_WORKSPACE\")); Pkg.add(\"BenchmarkTools\"); Pkg.update();"
+          julia test/benchmark.jl
