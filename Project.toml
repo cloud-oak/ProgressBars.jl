@@ -8,6 +8,7 @@ Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
 
 [extras]
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+BenchmarkPlots = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 
 [compat]
 julia = "1"
