@@ -42,10 +42,17 @@ for i in tqdm(1:1000)
 end
 @test true
 
-println(stderr, "> Test print from within a ProgressBar Loop")
+println(stderr, "> Test print to stdout from within a ProgressBar Loop")
 iter = ProgressBar(1:5)
 for i in iter
   println(iter, "Printing from iteration $i")
+  sleep(0.2)
+end
+
+println(stderr, "> Test print to stderr from within a ProgressBar Loop")
+iter = ProgressBar(1:5)
+for i in iter
+  println(iter, stderr, "Printing from iteration $i")
   sleep(0.2)
 end
 
