@@ -38,5 +38,5 @@ jobs:
           version: ${{ matrix.julia-version }}
       - name: "Benchmark iters"
         run: |
-          julia -e "import Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.add(\"BenchmarkTools\"); Pkg.update();"
+          julia -e "import Pkg; Pkg.develop(Pkg.PackageSpec(path=pwd())); Pkg.instantiate(); Pkg.add(\"BenchmarkTools\"); Pkg.update();"
           julia test/benchmark.jl
