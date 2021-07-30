@@ -4,7 +4,7 @@ using BenchmarkTools
 counter = 0
 function iterate(delay::Float64)
     global counter = 0
-    for i in ProgressBar(1:1000000, printing_delay=delay, output_stream=open("/dev/null", "w"))
+    for i in ProgressBar(1:1000000, printing_delay=delay, leave=false)
         global counter += i
     end
 end
