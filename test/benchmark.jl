@@ -31,6 +31,11 @@ results = @benchmark iterate(0.05)
 display(results)
 @test true
 
+println(stderr, "\nBenchmarking ProgressBar with 1M iters and printing_delay=0.00001")
+results = @benchmark iterate(0.00001)
+display(results)
+@test true
+
 println(stderr, "\nStandard 1M iterator in Julia")
 results = @benchmark standard()
 display(results)
