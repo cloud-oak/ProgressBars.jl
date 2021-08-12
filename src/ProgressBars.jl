@@ -48,6 +48,7 @@ mutable struct ProgressBar
   description::AbstractString
   multilinepostfix::AbstractString
   mutex::Threads.SpinLock
+  output_stream::IO
 
   function ProgressBar(wrapped::Any;
                        total::Int=-2,
@@ -55,11 +56,12 @@ mutable struct ProgressBar
                        leave::Bool=true,
                        unit::AbstractString="",
                        unit_scale::Bool=true,
-                       printing_delay::Number=0.05)
+                       printing_delay::Number=0.05,
+                       output_stream::IO=stderr)
     this = new()
     this.wrapped = wrapped
     if width == nothing
-        this.width = displaysize(stdout)[2]
+        this.width = displaysize(output_stream)[2]
         this.fixwidth = false
     else
         this.width = width
@@ -78,6 +80,7 @@ mutable struct ProgressBar
     this.extra_lines = 0
     this.mutex = Threads.SpinLock()
     this.current = 0
+    this.output_stream = output_stream
 
     if total == -2  # No total given
       try
@@ -150,13 +153,13 @@ function display_progress(t::ProgressBar)
 
   # Reset Cursor to beginning of the line
   for line in 1:t.extra_lines
-    move_up_1_line()
+    move_up_1_line(t.output_stream)
   end
-  go_to_start_of_line()
+  go_to_start_of_line(t.output_stream)
 
   if t.description != ""
     barwidth -= length(t.description) + 1
-    print(t.description * " ")
+    print(t.output_stream, t.description * " ")
   end
 
   if (t.total <= 0)
@@ -167,10 +170,10 @@ function display_progress(t::ProgressBar)
       barwidth = 0
     end
 
-    print("┣")
-    print(join(IDLE[1 + ((i + t.current) % length(IDLE))] for i in 1:barwidth))
-    print("┫ ")
-    print(status_string)
+    print(t.output_stream, "┣")
+    print(t.output_stream, join(IDLE[1 + ((i + t.current) % length(IDLE))] for i in 1:barwidth))
+    print(t.output_stream, "┫ ")
+    print(t.output_stream, status_string)
   else
     ETA = (t.total-t.current) / speed
 
@@ -189,32 +192,32 @@ function display_progress(t::ProgressBar)
     cellvalue = t.total / barwidth
     full_cells, remain = divrem(t.current, cellvalue)
 
-    print(percentage_string)
-    print("┣")
-    print(repeat("█", Int(full_cells)))
+    print(t.output_stream, percentage_string)
+    print(t.output_stream, "┣")
+    print(t.output_stream, repeat("█", Int(full_cells)))
     if (full_cells < barwidth)
       part = Int(floor(9 * remain / cellvalue))
-      print(EIGHTS[part])
-      print(repeat(" ", Int(barwidth - full_cells - 1)))
+      print(t.output_stream, EIGHTS[part])
+      print(t.output_stream, repeat(" ", Int(barwidth - full_cells - 1)))
     end
 
-    print("┫ ")
-    print(status_string)
+    print(t.output_stream, "┫ ")
+    print(t.output_stream, status_string)
   end
   multiline_postfix_string = newline_to_spaces(t.multilinepostfix, t.width)
   t.extra_lines = ceil(Int, length(multiline_postfix_string) / t.width) + 1
-  print(multiline_postfix_string)
-  println()
+  print(t.output_stream, multiline_postfix_string)
+  println(t.output_stream)
 end
 
 function clear_progress(t::ProgressBar)
   # Reset cursor, fill width with empty spaces, and then reset again
-  print("\r", " "^t.width, "\r")
+  print(t.output_stream, "\r", " "^t.width, "\r")
   for line in 1:(t.extra_lines)
-    erase_line()
-    move_up_1_line()
+    erase_line(t.output_stream)
+    move_up_1_line(t.output_stream)
   end
-  erase_line()
+  erase_line(t.output_stream)
 end
 
 function set_description(t::ProgressBar, description::AbstractString)
@@ -237,14 +240,14 @@ function postfix_repr(postfix::NamedTuple)::AbstractString
   return join(map(tpl -> ", $(tpl[1]): $(tpl[2])", zip(keys(postfix), postfix)))
 end
 
-make_space_after_progress_bar(extra_lines) = print("\n"^(extra_lines + 2))
-erase_to_end_of_line() = print("\033[K")
-move_up_1_line() = print("\033[1A")
-move_down_1_line() = print("\033[1B")
-go_to_start_of_line() = print("\r")
-erase_line() = begin
-  go_to_start_of_line()
-  erase_to_end_of_line()
+make_space_after_progress_bar(output_stream::IO, extra_lines) = print(output_stream, "\n"^(extra_lines + 2))
+erase_to_end_of_line(output_stream::IO) = print(output_stream, "\033[K")
+move_up_1_line(output_stream::IO) = print(output_stream, "\033[1A")
+move_down_1_line(output_stream::IO) = print(output_stream, "\033[1B")
+go_to_start_of_line(output_stream::IO) = print(output_stream, "\r")
+erase_line(output_stream::IO) = begin
+  go_to_start_of_line(output_stream)
+  erase_to_end_of_line(output_stream)
 end
 
 
@@ -279,11 +282,11 @@ function Base.iterate(iter::ProgressBar,s)
   iter.current += 1
   if(time_ns() - iter.last_print > iter.printing_delay)
     if !iter.fixwidth
-      current_terminal_width = displaysize(stdout)[2]
+      current_terminal_width = displaysize(iter.output_stream)[2]
       terminal_width_changed = current_terminal_width != iter.width
       if terminal_width_changed
         iter.width = current_terminal_width
-        make_space_after_progress_bar(iter.extra_lines)
+        make_space_after_progress_bar(iter.output_stream, iter.extra_lines)
       end
     end
     display_progress(iter)
@@ -363,16 +366,13 @@ end
 function Base.println(t::ProgressBar, xs...)
   # Reset Cursor to beginning of the line
   for line in 1:t.extra_lines
-    move_up_1_line()
-    erase_line()
+    move_up_1_line(t.output_stream)
+    erase_line(t.output_stream)
   end
-  go_to_start_of_line()
-  println(xs...)
-  for line in 1:t.extra_lines
-    move_down_1_line()
-  end
-  println()
-  display_progress(t)
+  go_to_start_of_line(t.output_stream)
+  println(xs...) # goes to stdout, by default
+  println(t.output_stream)
+  display_progress(t) # goes to stdout, by default
 end
 
 end # module
