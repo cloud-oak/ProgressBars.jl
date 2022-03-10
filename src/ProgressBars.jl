@@ -37,11 +37,11 @@ mutable struct ProgressBar
   width::Int
   fixwidth::Bool
   leave::Bool
-  start_time::UInt
-  last_print::UInt
+  start_time::UInt64
+  last_print::UInt64
   postfix::NamedTuple
   extra_lines::Int
-  printing_delay::UInt
+  printing_delay::UInt64
   unit::AbstractString
   iter_unit::AbstractString
   unit_scale::Bool
@@ -68,7 +68,7 @@ mutable struct ProgressBar
         this.fixwidth = true
     end
     this.leave = leave
-    this.printing_delay = trunc(UInt, printing_delay * 1e9)
+    this.printing_delay = trunc(UInt64, printing_delay * 1e9)
     this.start_time = time_ns()
     this.last_print = this.start_time - 2 * this.printing_delay
     this.postfix = NamedTuple()
