@@ -164,6 +164,7 @@ function set_multiline_postfix(t::ProgressBar, postfix::AbstractString)
   if mistakenly_used_newline_at_start
     postfix = postfix[2:end]
   end
+
   t.multilinepostfix = postfix
 end
 
@@ -181,24 +182,35 @@ erase_line(output_stream::IO) = begin
   erase_to_end_of_line(output_stream)
 end
 
-
 function newline_to_spaces(string, terminal_width)
+  if string == ""
+    return "", 1
+  end
+
+  # Taken from https://stackoverflow.com/questions/14693701/how-can-i-remove-the-ansi-escape-sequences-from-a-string-in-python
+  ansi_escape = r"(?:\x1B[@-Z\\-_]|[\x80-\x9A\x9C-\x9F]|(?:\x1B\[|\x9B)[0-?]*[ -/]*[@-~])|[\s\S]"
   new_string = ""
   width_cumulator = 0
-  for c in string
-    if c == '\n'
+  extra_lines = 2
+  for match in eachmatch(ansi_escape, string)
+    c = match.match
+    if length(c) > 1
+      new_string *= c
+    elseif c == "\n"
       spaces_required = terminal_width - width_cumulator
       new_string *= " "^spaces_required
       width_cumulator = 0
+      extra_lines += 1
     else
       new_string *= c
       width_cumulator += 1
     end
     if width_cumulator == terminal_width
       width_cumulator = 0
+      extra_lines += 1
     end
   end
-  return new_string
+  return new_string, extra_lines
 end
 
 function reset(iter::ProgressBar)
@@ -316,8 +328,7 @@ function update(iter::ProgressBar, amount::Int64=1; force_print=false)
       print(iter.output_stream, "┫ ")
       print(iter.output_stream, status_string)
     end
-    multiline_postfix_string = newline_to_spaces(iter.multilinepostfix, iter.width)
-    iter.extra_lines = ceil(Int, length(multiline_postfix_string) / iter.width) + 1
+    multiline_postfix_string, iter.extra_lines = newline_to_spaces(iter.multilinepostfix, iter.width)
     print(iter.output_stream, multiline_postfix_string)
     println(iter.output_stream)
 

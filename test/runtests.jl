@@ -84,6 +84,15 @@ for i in iter
 end
 @test true
 
+println(stderr, "> Test with colorful multiline postfix")
+iter = ProgressBar(1:100)
+for i in iter
+  sleep(0.0001)
+  loss = exp(-i / 1000)
+  set_multiline_postfix(iter, "\e[31mTest 1: $(rand())\e[0m\n\e[31;42;1mTest 2: $(rand())\e[0m\nTest 3: $loss")
+end
+@test true
+
 println(stderr, "> Test with regular postfix and multiline postfix")
 iter = ProgressBar(1:100)
 for i in iter
