@@ -9,6 +9,7 @@ Usage:
 module ProgressBars
 
 using Printf
+using Base.Threads
 
 EIGHTS = Dict(0 => ' ',
               1 => '▏',
@@ -32,8 +33,9 @@ progressbar every time a value is requested.
 """
 mutable struct ProgressBar
   wrapped::Any
-  total::Int
-  current::Int
+  total::Int64
+  current::Int64
+  current_printed::Int64
   width::Int
   fixwidth::Bool
   leave::Bool
@@ -48,11 +50,12 @@ mutable struct ProgressBar
   unit_scale::Bool
   description::AbstractString
   multilinepostfix::AbstractString
-  mutex::Threads.SpinLock
+  count_lock::Threads.ReentrantLock
+  print_lock::Threads.ReentrantLock
   output_stream::IO
 
   function ProgressBar(wrapped::Any=nothing;
-                       total::Int=-2,
+                       total::Int64=-2,
                        width::Union{UInt, Nothing}=nothing,
                        leave::Bool=true,
                        unit::AbstractString="",
@@ -80,8 +83,10 @@ mutable struct ProgressBar
     this.unit_scale = unit_scale
     this.multilinepostfix = ""
     this.extra_lines = 0
-    this.mutex = Threads.SpinLock()
+    this.count_lock = Threads.ReentrantLock()
+    this.print_lock = Threads.ReentrantLock()
     this.current = 0
+    this.current_printed = 0
     this.output_stream = output_stream
 
     if total == -2  # No total given
@@ -129,111 +134,6 @@ function format_amount(amount::Number, unit::AbstractString, unit_scale::Bool)
     # We can fall through to the default case for amount < 1000 
   end
   return @sprintf("%d%s", amount, unit)
-end
-
-function display_progress(t::ProgressBar; force::Bool=false)
-  if t.current == t.total
-    if t.leave
-      force = true
-    else
-      clear_progress(t)
-      return
-    end
-  end
-
-  if !force && (time_ns() - t.last_print < t.printing_delay)
-    return
-  end
-
-  if !t.fixwidth
-    current_terminal_width = displaysize(t.output_stream)[2]
-    terminal_width_changed = current_terminal_width != t.width
-    if terminal_width_changed
-      t.width = current_terminal_width
-      make_space_after_progress_bar(t.output_stream, t.extra_lines)
-    end
-  end
-
-  seconds = (time_ns() - t.start_time) * 1e-9
-  iteration = t.current - 1
-
-  elapsed = format_time(seconds)
-  speed = iteration / seconds
-  if seconds == 0
-    # Dummy value of 1 it/s if no time has elapsed
-    speed = 1
-  end
-
-  if speed >= 1
-    iterations_per_second = format_amount(speed, "$(t.iter_unit)/s", t.unit_scale)
-  else
-    # TODO: This might fail if speed == 0
-    iterations_per_second = format_amount(1 / speed, "s/$(t.iter_unit)", t.unit_scale)
-  end
-
-  barwidth = t.width - 2 # minus two for the separators
-
-  postfix_string = postfix_repr(t.postfix)
-
-  # Reset Cursor to beginning of the line
-  for line in 1:t.extra_lines
-    move_up_1_line(t.output_stream)
-  end
-  go_to_start_of_line(t.output_stream)
-
-  if t.description != ""
-    barwidth -= length(t.description) + 1
-    print(t.output_stream, t.description * " ")
-  end
-
-  if (t.total <= 0)
-    current = format_amount(t.current, t.iter_unit, t.unit_scale)
-    status_string = "$(current) $elapsed [$iterations_per_second$postfix_string]"
-    barwidth -= length(status_string) + 1
-    if barwidth < 0
-      barwidth = 0
-    end
-
-    print(t.output_stream, "┣")
-    print(t.output_stream, join(IDLE[1 + ((i + t.current) % length(IDLE))] for i in 1:barwidth))
-    print(t.output_stream, "┫ ")
-    print(t.output_stream, status_string)
-  else
-    ETA = (t.total-t.current) / speed
-
-    percentage_string = string(@sprintf("%.1f%%",t.current/t.total*100))
-
-    eta = format_time(ETA)
-    current = format_amount(t.current, t.unit, t.unit_scale)   
-    total   = format_amount(t.total, t.unit, t.unit_scale)   
-    status_string = "$(current)/$(total) [$elapsed<$eta, $iterations_per_second$postfix_string]"
-
-    barwidth -= length(status_string) + length(percentage_string) + 1
-    if barwidth < 0
-      barwidth = 0
-    end
-
-    cellvalue = t.total / barwidth
-    full_cells, remain = divrem(t.current, cellvalue)
-
-    print(t.output_stream, percentage_string)
-    print(t.output_stream, "┣")
-    print(t.output_stream, repeat("█", Int(full_cells)))
-    if (full_cells < barwidth)
-      part = Int(floor(9 * remain / cellvalue))
-      print(t.output_stream, EIGHTS[part])
-      print(t.output_stream, repeat(" ", Int(barwidth - full_cells - 1)))
-    end
-
-    print(t.output_stream, "┫ ")
-    print(t.output_stream, status_string)
-  end
-  multiline_postfix_string = newline_to_spaces(t.multilinepostfix, t.width)
-  t.extra_lines = ceil(Int, length(multiline_postfix_string) / t.width) + 1
-  print(t.output_stream, multiline_postfix_string)
-  println(t.output_stream)
-
-  t.last_print = time_ns()
 end
 
 function clear_progress(t::ProgressBar)
@@ -301,27 +201,146 @@ function newline_to_spaces(string, terminal_width)
   return new_string
 end
 
-function update(iter::ProgressBar, amount::Int=1)
-  iter.current += amount
-  display_progress(iter)
+function reset(iter::ProgressBar)
+  iter.start_time = time_ns() - iter.printing_delay
+  iter.current = 0
+  update(iter, 0)
+end
+
+function update(iter::ProgressBar, amount::Int64=1; force_print=false)
+  current = @lock iter.count_lock iter.current += amount
+  if current < iter.current_printed
+    return
+  end
+
+  if current == iter.total
+    if iter.leave
+      force_print = true
+    else
+      clear_progress(iter)
+      return
+    end
+  end
+
+  if force_print
+    lock(iter.print_lock)
+  elseif time_ns() - iter.last_print >= iter.printing_delay
+    if !trylock(iter.print_lock)
+      return
+    end
+  else
+    return
+  end
+
+  try
+    if !iter.fixwidth
+      current_terminal_width = displaysize(iter.output_stream)[2]
+      terminal_width_changed = current_terminal_width != iter.width
+      if terminal_width_changed
+        iter.width = current_terminal_width
+        make_space_after_progress_bar(iter.output_stream, iter.extra_lines)
+      end
+    end
+
+    seconds = (time_ns() - iter.start_time) * 1e-9
+    iteration = current - 1
+
+    elapsed = format_time(seconds)
+    speed = iteration / seconds
+    if seconds == 0
+      # Dummy value of 1 it/s if no time has elapsed
+      speed = 1
+    end
+
+    if speed >= 1
+      iterations_per_second = format_amount(speed, "$(iter.iter_unit)/s", iter.unit_scale)
+    else
+      # TODO: This might fail if speed == 0
+      iterations_per_second = format_amount(1 / speed, "s/$(iter.iter_unit)", iter.unit_scale)
+    end
+
+    barwidth = iter.width - 2 # minus two for the separators
+
+    postfix_string = postfix_repr(iter.postfix)
+
+    # Reset Cursor to beginning of the line
+    for line in 1:iter.extra_lines
+      move_up_1_line(iter.output_stream)
+    end
+    go_to_start_of_line(iter.output_stream)
+
+    if iter.description != ""
+      barwidth -= length(iter.description) + 1
+      print(iter.output_stream, iter.description * " ")
+    end
+
+    if (iter.total <= 0)
+      current_string = format_amount(iter.current[], iter.iter_unit, iter.unit_scale)
+      status_string = "$(current_string) $elapsed [$iterations_per_second$postfix_string]"
+      barwidth -= length(status_string) + 1
+      if barwidth < 0
+        barwidth = 0
+      end
+
+      print(iter.output_stream, "┣")
+      print(iter.output_stream, join(IDLE[1 + ((i + current) % length(IDLE))] for i in 1:barwidth))
+      print(iter.output_stream, "┫ ")
+      print(iter.output_stream, status_string)
+    else
+      ETA = (iter.total-current) / speed
+
+      percentage_string = string(@sprintf("%.1f%%",current/iter.total*100))
+
+      eta = format_time(ETA)
+      current_string = format_amount(current, iter.unit, iter.unit_scale)   
+      total   = format_amount(iter.total, iter.unit, iter.unit_scale)   
+      status_string = "$(current_string)/$(total) [$elapsed<$eta, $iterations_per_second$postfix_string]"
+
+      barwidth -= length(status_string) + length(percentage_string) + 1
+      if barwidth < 0
+        barwidth = 0
+      end
+
+      cellvalue = iter.total / barwidth
+      full_cells, remain = divrem(current, cellvalue)
+
+      print(iter.output_stream, percentage_string)
+      print(iter.output_stream, "┣")
+      print(iter.output_stream, repeat("█", Int(full_cells)))
+      if (full_cells < barwidth)
+        part = Int(floor(9 * remain / cellvalue))
+        print(iter.output_stream, EIGHTS[part])
+        print(iter.output_stream, repeat(" ", Int(barwidth - full_cells - 1)))
+      end
+
+      print(iter.output_stream, "┫ ")
+      print(iter.output_stream, status_string)
+    end
+    multiline_postfix_string = newline_to_spaces(iter.multilinepostfix, iter.width)
+    iter.extra_lines = ceil(Int, length(multiline_postfix_string) / iter.width) + 1
+    print(iter.output_stream, multiline_postfix_string)
+    println(iter.output_stream)
+
+    iter.last_print = time_ns()
+    iter.current_printed = current
+  finally
+    unlock(iter.print_lock)
+  end
 end
 
 function Base.iterate(iter::ProgressBar)
-  iter.start_time = time_ns() - iter.printing_delay
-  iter.current = 0
-  display_progress(iter, force=true)
+  update(iter, 0, force_print=true)
   return iterate(iter.wrapped)
 end
 
-function Base.iterate(iter::ProgressBar,s)  
+function Base.iterate(iter::ProgressBar, s)  
+  state = iterate(iter.wrapped, s)
   update(iter, 1)
-
-  state = iterate(iter.wrapped,s)
   if state == nothing
     if iter.total > 0
       iter.current = iter.total
     end
-    display_progress(iter, force=true)
+    update(iter, 0, force_print=true)
     return nothing
   end
   return state
@@ -335,31 +354,8 @@ function Base.length(iter::ProgressBar)
   end
 end
 
-Base.eltype(iter::ProgressBar) = eltype(iter.wrapped)
-
-function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
-  """
-  Base.unsafe_getindex is used by the `Threads.@threads for ... in ...` macro
-  in julia 1.3.
-  This wrapper will do weird things when used directly.
-  """
-  item = Base.unsafe_getindex(iter.wrapped, index)
-  lock(iter.mutex)
-  update(iter)
-
-  display_progress(iter)
-  unlock(iter.mutex)
-  return item
-end
-
-function Base.firstindex(iter::ProgressBar)
-  lock(iter.mutex)
-  iter.start_time = time_ns() - iter.printing_delay
-  iter.current = 0
-  display_progress(iter)
-  unlock(iter.mutex)
-  return Base.firstindex(iter.wrapped)
-end
+Base.eltype(iter::ProgressBar) = Base.eltype(iter.wrapped)
+Base.firstindex(iter::ProgressBar) = Base.firstindex(iter.wrapped)
 
 function Base.getindex(iter::ProgressBar, index::Int64)
   """
@@ -368,12 +364,11 @@ function Base.getindex(iter::ProgressBar, index::Int64)
   This wrapper will do weird things when used directly.
   """
   item = Base.getindex(iter.wrapped, index)
-  lock(iter.mutex)
-  iter.current += 1
-  display_progress(iter)
-  unlock(iter.mutex)
+  update(iter)
   return item
 end
+# unsafe_getindex for julia 1.3 compat
+Base.unsafe_getindex(iter::ProgressBar, index::Int64) = Base.getindex(iter, index)
 
 function Base.println(t::ProgressBar, xs...)
   # Reset Cursor to beginning of the line
@@ -384,7 +379,7 @@ function Base.println(t::ProgressBar, xs...)
   go_to_start_of_line(t.output_stream)
   println(xs...) # goes to stdout, by default
   println(t.output_stream)
-  display_progress(t) # goes to stdout, by default
+  update(t, 0) # goes to stdout, by default
 end
 
 end # module

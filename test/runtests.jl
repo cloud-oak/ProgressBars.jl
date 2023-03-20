@@ -118,8 +118,9 @@ end
 println(stderr, "> Testing Threads for Julia 1.3")
 if VERSION >= v"1.3.0"
   a = []
-  Threads.@threads for i in ProgressBar(1:1000)
+  Threads.@threads for i in ProgressBar(1:100)
     push!(a, i * 2)
+    sleep(0.1 * rand())
   end
 end
 @test true
