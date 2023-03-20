@@ -220,7 +220,13 @@ function reset(iter::ProgressBar)
 end
 
 function update(iter::ProgressBar, amount::Int64=1; force_print=false)
-  current = @lock iter.count_lock iter.current += amount
+  lock(iter.count_lock)
+  current = try 
+    iter.current += amount
+  finally
+    unlock(iter.count_lock)
+  end
+
   if current < iter.current_printed
     return
   end
