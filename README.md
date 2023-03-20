@@ -30,6 +30,7 @@ julia> for i in tqdm(1:100000) #wrap any iterator
 100.00%┣█████████████████████████████████████████████████┫ 100000/100000 [00:12<00:00 , 8616.43 it/s]
 ```
 
+
 Iterating with a custom unit (e.g. bytes)
 ```julia
 julia> iter = ProgressBar(1:2_000_000, unit="B", unit_scale=true)
@@ -88,6 +89,16 @@ julia> iter = ProgressBar(1:100)
 Test1: 0.6740503146383823
 Test2: 0.23694728303439727
 Test3: 0.06787944117144233
+```
+
+### No wrapped iterable
+Sometimes you just want to display a progress bar without wrapping an iterable.
+This is possible through the combination of the `ProgressBar(total=<N>)` constructor and the `update` method:
+
+```julia
+julia> pbar = ProgressBar(total=100)
+       update(pbar)     # Advances pbar count by 1
+       update(pbar, 99) # Can give an explicit count for advancing the progress bar
 ```
 
 ### Parallel for-loops

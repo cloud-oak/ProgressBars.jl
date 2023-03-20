@@ -37,7 +37,7 @@ for i in ProgressBar(1:1)
 end
 
 println(stderr, "> Test tqdm alias")
-for i in tqdm(1:1000)
+for i in tqdm(1:100)
   sleep(0.0001)
 end
 @test true
@@ -46,18 +46,18 @@ println(stderr, "> Test print to stdout from within a ProgressBar Loop")
 iter = ProgressBar(1:5)
 for i in iter
   println(iter, "Printing from iteration $i")
-  sleep(0.2)
+  sleep(0.1)
 end
 
 println(stderr, "> Test print to stderr from within a ProgressBar Loop")
 iter = ProgressBar(1:5)
 for i in iter
   println(iter, stderr, "Printing from iteration $i")
-  sleep(0.2)
+  sleep(0.1)
 end
 
 println(stderr, "> Test with description")
-iter = ProgressBar(1:1000)
+iter = ProgressBar(1:100)
 for i in iter
   # ... Neural Network Training Code
   sleep(0.0001)
@@ -67,7 +67,7 @@ end
 @test true
 
 println(stderr, "> Test with regular postfix")
-iter = ProgressBar(1:1000)
+iter = ProgressBar(1:100)
 for i in iter
   sleep(0.0001)
   loss = exp(-i / 1000)
@@ -76,7 +76,7 @@ end
 @test true
 
 println(stderr, "> Test with multiline postfix")
-iter = ProgressBar(1:1000)
+iter = ProgressBar(1:100)
 for i in iter
   sleep(0.0001)
   loss = exp(-i / 1000)
@@ -85,7 +85,7 @@ end
 @test true
 
 println(stderr, "> Test with regular postfix and multiline postfix")
-iter = ProgressBar(1:1000)
+iter = ProgressBar(1:100)
 for i in iter
   sleep(0.0001)
   loss = exp(-i / 1000)
@@ -95,7 +95,15 @@ end
 @test true
 
 println(stderr, "> Test with leave=false, there should be no pbar left below this!")
-iter = ProgressBar(1:1000, leave=false)
+iter = ProgressBar(1:100, leave=false)
+for i in iter
+  sleep(0.0001)
+end
+@test true
+
+println(stderr, "> Test with leave=false and ML postfix, there should be no pbar left below this!")
+iter = ProgressBar(1:100, leave=false)
+set_multiline_postfix(iter, "blablabla\nbla")
 for i in iter
   sleep(0.0001)
 end
@@ -119,5 +127,13 @@ end
 println(stderr, "> Testing pbar with custom units")
 for i in ProgressBar(1:100, unit="flobberwobbles")
   sleep(0.001)
+end
+@test true
+
+println(stderr, "> Testing pbar without wrapped iterable")
+pbar = ProgressBar(total=100)
+for i in 1:100
+  sleep(0.001)
+  update(pbar)
 end
 @test true

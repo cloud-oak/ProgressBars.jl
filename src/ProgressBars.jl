@@ -24,7 +24,7 @@ EIGHTS = Dict(0 => ' ',
 # IDLE = collect("◢◤ ")
 IDLE = collect("╱   ")
 
-export ProgressBar, tqdm, set_description, set_postfix, set_multiline_postfix
+export ProgressBar, tqdm, set_description, set_postfix, set_multiline_postfix, update
 """
 Decorate an iterable object, returning an iterator which acts exactly
 like the original iterable, but prints a dynamically updating
@@ -37,6 +37,7 @@ mutable struct ProgressBar
   width::Int
   fixwidth::Bool
   leave::Bool
+  cleared::Bool
   start_time::UInt64
   last_print::UInt64
   postfix::NamedTuple
@@ -50,7 +51,7 @@ mutable struct ProgressBar
   mutex::Threads.SpinLock
   output_stream::IO
 
-  function ProgressBar(wrapped::Any;
+  function ProgressBar(wrapped::Any=nothing;
                        total::Int=-2,
                        width::Union{UInt, Nothing}=nothing,
                        leave::Bool=true,
@@ -68,6 +69,7 @@ mutable struct ProgressBar
         this.fixwidth = true
     end
     this.leave = leave
+    this.cleared = false
     this.printing_delay = trunc(UInt64, printing_delay * 1e9)
     this.start_time = time_ns()
     this.last_print = this.start_time - 2 * this.printing_delay
@@ -129,7 +131,29 @@ function format_amount(amount::Number, unit::AbstractString, unit_scale::Bool)
   return @sprintf("%d%s", amount, unit)
 end
 
-function display_progress(t::ProgressBar)
+function display_progress(t::ProgressBar; force::Bool=false)
+  if t.current == t.total
+    if t.leave
+      force = true
+    else
+      clear_progress(t)
+      return
+    end
+  end
+
+  if !force && (time_ns() - t.last_print < t.printing_delay)
+    return
+  end
+
+  if !t.fixwidth
+    current_terminal_width = displaysize(t.output_stream)[2]
+    terminal_width_changed = current_terminal_width != t.width
+    if terminal_width_changed
+      t.width = current_terminal_width
+      make_space_after_progress_bar(t.output_stream, t.extra_lines)
+    end
+  end
+
   seconds = (time_ns() - t.start_time) * 1e-9
   iteration = t.current - 1
 
@@ -208,16 +232,23 @@ function display_progress(t::ProgressBar)
   t.extra_lines = ceil(Int, length(multiline_postfix_string) / t.width) + 1
   print(t.output_stream, multiline_postfix_string)
   println(t.output_stream)
+
+  t.last_print = time_ns()
 end
 
 function clear_progress(t::ProgressBar)
   # Reset cursor, fill width with empty spaces, and then reset again
-  print(t.output_stream, "\r", " "^t.width, "\r")
+  if t.cleared
+    # Only clear once
+    return
+  end
+  erase_line(t.output_stream)
   for line in 1:(t.extra_lines)
     erase_line(t.output_stream)
     move_up_1_line(t.output_stream)
   end
   erase_line(t.output_stream)
+  t.cleared = true
 end
 
 function set_description(t::ProgressBar, description::AbstractString)
@@ -270,42 +301,40 @@ function newline_to_spaces(string, terminal_width)
   return new_string
 end
 
+function update(iter::ProgressBar, amount::Int=1)
+  iter.current += amount
+  display_progress(iter)
+end
 
 function Base.iterate(iter::ProgressBar)
   iter.start_time = time_ns() - iter.printing_delay
   iter.current = 0
-  display_progress(iter)
+  display_progress(iter, force=true)
   return iterate(iter.wrapped)
 end
 
 function Base.iterate(iter::ProgressBar,s)  
-  iter.current += 1
-  if(time_ns() - iter.last_print > iter.printing_delay)
-    if !iter.fixwidth
-      current_terminal_width = displaysize(iter.output_stream)[2]
-      terminal_width_changed = current_terminal_width != iter.width
-      if terminal_width_changed
-        iter.width = current_terminal_width
-        make_space_after_progress_bar(iter.output_stream, iter.extra_lines)
-      end
-    end
-    display_progress(iter)
-    iter.last_print = time_ns()
-  end
+  update(iter, 1)
+
   state = iterate(iter.wrapped,s)
   if state == nothing
     if iter.total > 0
       iter.current = iter.total
     end
-    display_progress(iter)
-    if !iter.leave
-      clear_progress(iter)
-    end
+    display_progress(iter, force=true)
     return nothing
   end
   return state
 end
-Base.length(iter::ProgressBar) = length(iter.wrapped)
+
+function Base.length(iter::ProgressBar)
+  if iter.total > 0
+    return iter.total
+  else
+    return length(iter.wrapped)
+  end
+end
+
 Base.eltype(iter::ProgressBar) = eltype(iter.wrapped)
 
 function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
@@ -316,17 +345,9 @@ function Base.unsafe_getindex(iter::ProgressBar, index::Int64)
   """
   item = Base.unsafe_getindex(iter.wrapped, index)
   lock(iter.mutex)
-  iter.current += 1
-  if time_ns() - iter.last_print > iter.printing_delay
-    display_progress(iter)
-    iter.last_print = time_ns()
-  elseif iter.current == iter.total
-    # Reached end of iteration
-    display_progress(itr)
-    if !iter.leave
-      clear_progress(iter)
-    end
-  end
+  update(iter)
+
+  display_progress(iter)
   unlock(iter.mutex)
   return item
 end
@@ -349,16 +370,7 @@ function Base.getindex(iter::ProgressBar, index::Int64)
   item = Base.getindex(iter.wrapped, index)
   lock(iter.mutex)
   iter.current += 1
-  if time_ns() - iter.last_print > iter.printing_delay
-    display_progress(iter)
-    iter.last_print = time_ns()
-  elseif iter.current == iter.total
-    # Reached end of iteration
-    display_progress(iter)
-    if !iter.leave
-      clear_progress(iter)
-    end
-  end
+  display_progress(iter)
   unlock(iter.mutex)
   return item
 end
