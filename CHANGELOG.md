@@ -1,6 +1,6 @@
 # Changelog
 
-## Next Release
+## 1.5.0 (2023-03-20)
 * FEATURE: Ability to use just total and update without passing an iterable
 * FIX: Multi-threaded progress bars now finish correctly
 * FIX: Multiline postfix now correctly works together with ANSI escape codes (e.g. for colorful output)
