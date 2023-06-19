@@ -327,7 +327,7 @@ function update(iter::ProgressBar, amount::Int64=1; force_print=false)
       print(iter.output_stream, repeat("█", Int(full_cells)))
       if (full_cells < barwidth)
         part = Int(floor(9 * remain / cellvalue))
-        print(iter.output_stream, EIGHTS[part])
+        print(iter.output_stream, get(EIGHTS, part, '█'))
         print(iter.output_stream, repeat(" ", Int(barwidth - full_cells - 1)))
       end
 
