@@ -64,7 +64,7 @@ mutable struct ProgressBar
 		unit_scale::Bool = true,
 		printing_delay::Number = 0.05,
 		output_stream::IO = stderr)
-    
+
 		this = new()
 		this.wrapped = wrapped
 		if isnothing(width)
@@ -394,7 +394,7 @@ Base.unsafe_getindex(iter::ProgressBar, index::Int64) = Base.getindex(iter, inde
 
 function Base.println(t::ProgressBar, xs...)
 	# Reset Cursor to beginning of the line
-	for line in 1:t.extra_lines
+	for _ in 1:t.extra_lines
 		move_up_1_line(t.output_stream)
 		erase_line(t.output_stream)
 	end
