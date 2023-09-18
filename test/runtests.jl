@@ -144,6 +144,6 @@ println(stderr, "> Testing pbar without wrapped iterable")
 pbar = ProgressBar(total=100)
 for i in 1:100
   sleep(0.001)
-  update(pbar)
+  update!(pbar)
 end
 @test true
