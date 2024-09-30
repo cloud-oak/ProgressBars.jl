@@ -20,6 +20,8 @@ jobs:
           - os: macos-latest
             julia-version: '1.6'
             julia-arch: ''
+          - os: windows-latest
+            julia-version: '1.6'
         include: 
           - os: macos-latest
             julia-version: '1.6'
