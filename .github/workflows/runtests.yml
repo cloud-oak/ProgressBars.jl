@@ -7,16 +7,28 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        julia-version: ['1.0', '1', 'nightly']
-        julia-arch: [x64, x86]
-        os: [ubuntu-latest, windows-latest, macOS-latest]
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest  # Apple Silicon
+        julia-version:
+          - '1.6'
+          - '1.10'
+        julia-arch:
+          - ''
         exclude:
-          - os: macOS-latest
-            julia-arch: x86
+          - os: macos-latest
+            julia-version: '1.6'
+            julia-arch: ''
+        include: 
+          - os: macos-latest
+            julia-version: '1.6'
+            julia-arch: 'x64'
     
     steps:
       - uses: actions/checkout@v1.0.0
-      - uses: julia-actions/setup-julia@latest
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.julia-version }}
+          arch: ${{ (matrix.julia-arch == '') && runner.arch || matrix.julia-arch }}
       - uses: julia-actions/julia-runtest@v1
