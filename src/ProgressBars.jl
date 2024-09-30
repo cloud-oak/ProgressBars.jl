@@ -11,6 +11,7 @@ module ProgressBars
 using Printf
 using Base.Threads
 
+
 EIGHTS = Dict(0 => ' ',
               1 => '▏',
               2 => '▎',
@@ -31,8 +32,8 @@ Decorate an iterable object, returning an iterator which acts exactly
 like the original iterable, but prints a dynamically updating
 progressbar every time a value is requested.
 """
-mutable struct ProgressBar
-  wrapped::Any
+mutable struct ProgressBar{T}
+  wrapped::T
   total::Int64
   current::Int64
   current_printed::Int64
@@ -54,15 +55,15 @@ mutable struct ProgressBar
   print_lock::Threads.ReentrantLock
   output_stream::IO
 
-  function ProgressBar(wrapped::Any=nothing;
+  function ProgressBar(wrapped::T=nothing;
                        total::Int64=-2,
                        width::Union{UInt, Nothing}=nothing,
                        leave::Bool=true,
                        unit::AbstractString="",
                        unit_scale::Bool=true,
                        printing_delay::Number=0.05,
-                       output_stream::IO=stderr)
-    this = new()
+                       output_stream::IO=stderr) where T
+    this = new{T}()
     this.wrapped = wrapped
     if width == nothing
         this.width = displaysize(output_stream)[2]
